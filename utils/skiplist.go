@@ -172,16 +172,14 @@ func (list *SkipList) compare(score float64, key []byte, next *Element) int {
 func (list *SkipList) randLevel() int {
 	//implement me here!!!
 	var level int
-	for {
+	for level <= list.maxLevel {
 		if list.rand.Intn(2) == 0 {
-			return level
+			break
 		} else {
-			if level >= list.maxLevel {
-				return list.maxLevel
-			}
 			level++
 		}
 	}
+	return level
 }
 
 func (list *SkipList) Size() int64 {
