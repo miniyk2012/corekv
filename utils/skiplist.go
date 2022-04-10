@@ -29,6 +29,7 @@ func NewSkipList() *SkipList {
 	r := rand.New(s)
 	list := SkipList{
 		rand: r,
+		maxLevel: defaultMaxLevel,
 	}
 	return &list
 }
@@ -58,11 +59,11 @@ func (list *SkipList) Add(data *codec.Entry) error {
 	curElement = list.header
 	score := list.calcScore(data.Key)
 	if curElement == nil {
-		list.header = newElement(score, data, 0)
+		list.header = newElement(score, data, defaultMaxLevel)
 		return nil
 	}
 	if list.compare(score, data.Key, curElement) < 0 {  // data比所有的节点都小
-		list.header = newElement(score, data, 0)
+		list.header = newElement(score, data, defaultMaxLevel)
 		for j := 0; j<=list.maxLevel; j++  {
 			list.header.levels[j] = curElement
 		}
@@ -70,11 +71,13 @@ func (list *SkipList) Add(data *codec.Entry) error {
 	}
 	preElements := make([]*Element, list.maxLevel+1)   // 存储每层添加位置的前一个节点
 	i := list.maxLevel
+	var contain = false
 	for i >= 0 {
 		for preElement = curElement;curElement!=nil;curElement = curElement.levels[i] {
 			cmp := list.compare(score, data.Key, curElement)
 			if cmp <= 0 {
 				if cmp == 0 {
+					contain = true
 					curElement.Entry().Value = data.Value  // key相等Value做替换, 而非添加节点
 				} else {
 					preElements[i] = preElement
@@ -84,21 +87,19 @@ func (list *SkipList) Add(data *codec.Entry) error {
 				break
 			}
 		}
-		if curElement == nil {  // 说明比所有节点都大
-			for j := 0; j<=list.maxLevel; j++  {
-				preElements[j] = preElement
-			}
-			break
+		if curElement == nil {  // 说明比该层所有节点都大
+			preElements[i] = preElement
+			curElement = preElement
+			i--
 		}
 	}
-
+	if contain {
+		return nil
+	}
 
 	addLevel := list.randLevel()
-	if addLevel > list.maxLevel {
-		list.maxLevel = addLevel
-	}
-	e := newElement(score, data, addLevel)
-	for j := 0; j<addLevel; j++ {
+	e := newElement(score, data, defaultMaxLevel)
+	for j := 0; j<=addLevel; j++ {
 		next := preElements[j].levels[j]
 		preElements[j].levels[j] = e
 		e.levels[j] = next
@@ -127,10 +128,11 @@ func (list *SkipList) Search(key []byte) (e *codec.Entry) {
 			}
 		}
 		if curElement == nil {
-			return nil   // 比最大的大
+			i--    // 比这一层最大的大
+			curElement = preElement
 		}
 	}
-	return nil  // 应该到不了这里
+	return nil   // 比所有的都大
 }
 
 func (list *SkipList) Close() error {

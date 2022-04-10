@@ -101,8 +101,7 @@ func TestSkipListBasicCRUD(t *testing.T) {
 func Benchmark_SkipListBasicCRUD(b *testing.B) {
 	list := NewSkipList()
 	key, val := "", ""
-	maxTime := 1000000
-	for i := 0; i < maxTime; i++ {
+	for i := 0; i < b.N; i++ {
 		//number := rand.Intn(10000)
 		key, val = fmt.Sprintf("Key%d", i), fmt.Sprintf("Val%d", i)
 		entry := codec.NewEntry([]byte(key), []byte(val))
@@ -110,7 +109,6 @@ func Benchmark_SkipListBasicCRUD(b *testing.B) {
 		assert.Equal(b, nil, res)
 		searchVal := list.Search([]byte(key))
 		assert.Equal(b, []byte(val), searchVal.Value)
-
 	}
 }
 
@@ -147,13 +145,12 @@ func TestConcurrentBasic(t *testing.T) {
 }
 
 func Benchmark_ConcurrentBasic(b *testing.B) {
-	const n = 1000
 	l := NewSkipList()
 	var wg sync.WaitGroup
 	key := func(i int) []byte {
 		return []byte(fmt.Sprintf("%05d", i))
 	}
-	for i := 0; i < n; i++ {
+	for i := 0; i < b.N; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -163,7 +160,7 @@ func Benchmark_ConcurrentBasic(b *testing.B) {
 	wg.Wait()
 
 	// Check values. Concurrent reads.
-	for i := 0; i < n; i++ {
+	for i := 0; i < b.N; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
