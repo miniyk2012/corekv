@@ -30,7 +30,6 @@ func NewSkipList() *SkipList {
 	list := SkipList{
 		rand: r,
 		maxLevel: defaultMaxLevel,
-		lock: sync.RWMutex{},
 	}
 	return &list
 }
@@ -114,8 +113,8 @@ func (list *SkipList) Add(data *codec.Entry) error {
 
 func (list *SkipList) Search(key []byte) (e *codec.Entry) {
 	//implement me here!!!
-	list.lock.Lock()
-	defer list.lock.Unlock()
+	list.lock.RLock()
+	defer list.lock.RUnlock()
 	i := list.maxLevel
 	var preElement, curElement *Element
 	curElement = list.header

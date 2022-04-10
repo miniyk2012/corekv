@@ -96,6 +96,18 @@ func TestSkipListBasicCRUD(t *testing.T) {
 	entry2_new := codec.NewEntry([]byte("Key1"), []byte("Val1+1"))
 	assert.Nil(t, list.Add(entry2_new))
 	assert.Equal(t, entry2_new.Value, list.Search(entry2_new.Key).Value)
+
+	randKeys := make([][]byte, 10)
+	for i:=0; i<10; i++ {
+		key := RandString(16)
+		entry_rand := codec.NewEntry([]byte(key), []byte(key))
+		assert.Nil(t, list.Add(entry_rand))
+		randKeys[i] = []byte(key)
+	}
+	for _, key := range randKeys {
+		entry := list.Search(key)
+		assert.Equal(t,key, entry.Value)
+	}
 }
 
 func Benchmark_SkipListBasicCRUD(b *testing.B) {
