@@ -102,7 +102,7 @@ func Benchmark_SkipListBasicCRUD(b *testing.B) {
 	list := NewSkipList()
 	key, val := "", ""
 	maxTime := 10000
-	for i := 0; i < maxTime; i++ {
+	for i := maxTime; i >0; i-- {
 		//number := rand.Intn(10000)
 		key, val = fmt.Sprintf("Key%d", i), fmt.Sprintf("Val%d", i)
 		entry := codec.NewEntry([]byte(key), []byte(val))
@@ -111,6 +111,7 @@ func Benchmark_SkipListBasicCRUD(b *testing.B) {
 		searchVal := list.Search([]byte(key))
 		assert.Equal(b, []byte(val), searchVal.Value)
 	}
+	assert.Equal(b, int64(maxTime), list.size)
 }
 
 func TestConcurrentBasic(t *testing.T) {
@@ -156,22 +157,24 @@ func Benchmark_ConcurrentBasic(b *testing.B) {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			assert.Nil(b, l.Add(codec.NewEntry(key(i), key(i))))
+			the_key := key(i)
+			assert.Nil(b, l.Add(codec.NewEntry(the_key, the_key)))
 		}(i)
 	}
 	wg.Wait()
-
+	assert.Equal(b, int64(n), l.size)
 	// Check values. Concurrent reads.
 	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			v := l.Search(key(i))
+			the_key := key(i)
+			v := l.Search(the_key)
 			if v != nil {
-				require.EqualValues(b, key(i), v.Value)
+				require.EqualValues(b, the_key, v.Value)
 				return
 			}
-			require.Nil(b, v)
+			require.NotNil(b, v)
 		}(i)
 	}
 	wg.Wait()

@@ -62,10 +62,12 @@ func (list *SkipList) Add(data *codec.Entry) error {
 	score := list.calcScore(data.Key)
 	if curElement == nil {
 		list.header = newElement(score, data, defaultMaxLevel)
+		list.size++
 		return nil
 	}
 	if list.compare(score, data.Key, curElement) < 0 {  // data比所有的节点都小
 		list.header = newElement(score, data, defaultMaxLevel)
+		list.size++
 		for j := 0; j<=list.maxLevel; j++  {
 			list.header.levels[j] = curElement
 		}
@@ -101,6 +103,7 @@ func (list *SkipList) Add(data *codec.Entry) error {
 
 	addLevel := list.randLevel()
 	e := newElement(score, data, defaultMaxLevel)
+	list.size++
 	for j := 0; j<=addLevel; j++ {
 		next := preElements[j].levels[j]
 		preElements[j].levels[j] = e
@@ -111,8 +114,8 @@ func (list *SkipList) Add(data *codec.Entry) error {
 
 func (list *SkipList) Search(key []byte) (e *codec.Entry) {
 	//implement me here!!!
-	list.lock.RLock()
-	defer list.lock.RUnlock()
+	list.lock.Lock()
+	defer list.lock.Unlock()
 	i := list.maxLevel
 	var preElement, curElement *Element
 	curElement = list.header
