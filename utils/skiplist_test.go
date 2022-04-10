@@ -97,8 +97,9 @@ func TestSkipListBasicCRUD(t *testing.T) {
 	assert.Nil(t, list.Add(entry2_new))
 	assert.Equal(t, entry2_new.Value, list.Search(entry2_new.Key).Value)
 
-	randKeys := make([][]byte, 10)
-	for i:=0; i<10; i++ {
+	n := 100
+	randKeys := make([][]byte, n)
+	for i:=0; i<n; i++ {
 		key := RandString(16)
 		entry_rand := codec.NewEntry([]byte(key), []byte(key))
 		assert.Nil(t, list.Add(entry_rand))
