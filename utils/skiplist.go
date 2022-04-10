@@ -119,16 +119,12 @@ func (list *SkipList) Search(key []byte) (e *codec.Entry) {
 			if cmp == 0 {
 				return curElement.Entry()
 			} else if cmp < 0 {
-				i--
-				curElement = preElement
 				break
 			}
 			preElement = curElement
 		}
-		if curElement == nil {
-			i-- // 比这一层最大的大
-			curElement = preElement
-		}
+		curElement = preElement
+		i--
 	}
 	return nil // 比所有的都大
 }

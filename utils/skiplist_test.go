@@ -148,9 +148,12 @@ func TestDrawSkipList(t *testing.T) {
 		}
 	}
 	list.Draw()
+	fmt.Println()
 	entry := codec.NewEntry([]byte("3"), []byte("a3"))
-	list.Draw()
 	list.Add(entry)
+	list.Draw()
+	fmt.Println()
+
 	entry = codec.NewEntry([]byte("6"), []byte("a6"))
 	list.Add(entry)
 	list.Draw()
