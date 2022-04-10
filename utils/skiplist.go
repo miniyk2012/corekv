@@ -84,7 +84,6 @@ func (list *SkipList) Add(data *codec.Entry) error {
 				curElement.Entry().Value = data.Value // key相等Value做替换, 而非添加节点
 				break
 			} else if cmp < 0 {
-
 				break
 			}
 			preElement = curElement

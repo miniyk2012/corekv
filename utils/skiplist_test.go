@@ -131,18 +131,18 @@ func Benchmark_SkipListBasicCRUD(b *testing.B) {
 
 func TestDrawSkipList(t *testing.T) {
 	keys := []string{
-		"9", "1", "5", "3","2","6", "0", "4", "8", "7",
+		"1", "5", "3","2","6", "0","9", "4", "8", "4", "7",
 	}
 	list := NewSkipList()
 	for _, key := range keys {
 		entry := codec.NewEntry([]byte(key), []byte(key))
 		list.Add(entry)
 	}
-	assert.Equal(t, len(keys), int(list.Size()))
+	assert.Equal(t, 10, int(list.Size()))
 	for _, key :=range keys {
 		v := list.Search([]byte(key))
 		if v != nil {
-			t.Logf("%s=%s\n", key, v.Value)
+			assert.Equal(t, []byte(key), v.Value)
 		} else {
 			t.FailNow()
 		}
