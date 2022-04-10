@@ -187,8 +187,9 @@ func Benchmark_ConcurrentBasic(b *testing.B) {
 			if v != nil {
 				require.EqualValues(b, the_key, v.Value)
 				return
+			} else {
+				panic("fail")
 			}
-			require.NotNil(b, v)
 		}(i)
 	}
 	wg.Wait()
