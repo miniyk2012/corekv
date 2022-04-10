@@ -101,7 +101,8 @@ func TestSkipListBasicCRUD(t *testing.T) {
 func Benchmark_SkipListBasicCRUD(b *testing.B) {
 	list := NewSkipList()
 	key, val := "", ""
-	for i := 0; i < b.N; i++ {
+	maxTime := 10000
+	for i := 0; i < maxTime; i++ {
 		//number := rand.Intn(10000)
 		key, val = fmt.Sprintf("Key%d", i), fmt.Sprintf("Val%d", i)
 		entry := codec.NewEntry([]byte(key), []byte(val))
