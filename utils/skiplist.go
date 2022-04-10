@@ -2,6 +2,7 @@ package utils
 
 import (
 	"bytes"
+	"fmt"
 	"github.com/hardcore-os/corekv/utils/codec"
 	"math/rand"
 	"sync"
@@ -9,7 +10,7 @@ import (
 )
 
 const (
-	defaultMaxLevel = 48
+	defaultMaxLevel = 2
 )
 
 type SkipList struct {
@@ -28,7 +29,7 @@ func NewSkipList() *SkipList {
 	s := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(s)
 	list := SkipList{
-		rand: r,
+		rand:     r,
 		maxLevel: defaultMaxLevel,
 	}
 	return &list
@@ -64,37 +65,33 @@ func (list *SkipList) Add(data *codec.Entry) error {
 		list.size++
 		return nil
 	}
-	if list.compare(score, data.Key, curElement) < 0 {  // data比所有的节点都小
+	if list.compare(score, data.Key, curElement) < 0 { // data比所有的节点都小
 		list.header = newElement(score, data, defaultMaxLevel)
 		list.size++
-		for j := 0; j<=list.maxLevel; j++  {
+		for j := 0; j <= list.maxLevel; j++ {
 			list.header.levels[j] = curElement
 		}
 		return nil
 	}
-	preElements := make([]*Element, list.maxLevel+1)   // 存储每层添加位置的前一个节点
+	preElements := make([]*Element, list.maxLevel+1) // 存储每层添加位置的前一个节点
 	i := list.maxLevel
 	var contain = false
 	for i >= 0 {
-		for preElement = curElement;curElement!=nil;curElement = curElement.levels[i] {
+		for preElement = curElement; curElement != nil; curElement = curElement.levels[i] {
 			cmp := list.compare(score, data.Key, curElement)
-			if cmp <= 0 {
-				if cmp == 0 {
-					contain = true
-					curElement.Entry().Value = data.Value  // key相等Value做替换, 而非添加节点
-				} else {
-					preElements[i] = preElement
-				}
-				curElement = preElement
-				i--
+			if cmp == 0 {
+				contain = true
+				curElement.Entry().Value = data.Value // key相等Value做替换, 而非添加节点
+				break
+			} else if cmp < 0 {
+
 				break
 			}
+			preElement = curElement
 		}
-		if curElement == nil {  // 说明比该层所有节点都大
-			preElements[i] = preElement
-			curElement = preElement
-			i--
-		}
+		preElements[i] = preElement
+		curElement = preElement
+		i--
 	}
 	if contain {
 		return nil
@@ -103,7 +100,7 @@ func (list *SkipList) Add(data *codec.Entry) error {
 	addLevel := list.randLevel()
 	e := newElement(score, data, defaultMaxLevel)
 	list.size++
-	for j := 0; j<=addLevel; j++ {
+	for j := 0; j <= addLevel; j++ {
 		next := preElements[j].levels[j]
 		preElements[j].levels[j] = e
 		e.levels[j] = next
@@ -123,7 +120,7 @@ func (list *SkipList) Search(key []byte) (e *codec.Entry) {
 		return nil
 	}
 	for i >= 0 {
-		for preElement = curElement;curElement!=nil;curElement = curElement.levels[i] {
+		for preElement = curElement; curElement != nil; curElement = curElement.levels[i] {
 			cmp := list.compare(score, key, curElement)
 			if cmp == 0 {
 				return curElement.Entry()
@@ -132,13 +129,14 @@ func (list *SkipList) Search(key []byte) (e *codec.Entry) {
 				curElement = preElement
 				break
 			}
+			preElement = curElement
 		}
 		if curElement == nil {
-			i--    // 比这一层最大的大
+			i-- // 比这一层最大的大
 			curElement = preElement
 		}
 	}
-	return nil   // 比所有的都大
+	return nil // 比所有的都大
 }
 
 func (list *SkipList) Close() error {
@@ -179,6 +177,9 @@ func (list *SkipList) randLevel() int {
 		if list.rand.Intn(2) == 0 {
 			return level
 		} else {
+			if level >= list.maxLevel {
+				return list.maxLevel
+			}
 			level++
 		}
 	}
@@ -187,4 +188,15 @@ func (list *SkipList) randLevel() int {
 func (list *SkipList) Size() int64 {
 	//implement me here!!!
 	return list.size
+}
+
+func (list *SkipList) Draw() {
+	i := list.maxLevel
+	for i >= 0 {
+		for curElement := list.header; curElement != nil; curElement = curElement.levels[i] {
+			fmt.Printf("%s--", curElement.Entry().Key)
+		}
+		i--
+		fmt.Println()
+	}
 }

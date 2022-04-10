@@ -67,6 +67,7 @@ func TestSkipSearch(t *testing.T) {
 	elementD.levels[0] = elementE
 	elementE.levels[2], elementE.levels[1], elementE.levels[0] = nil, nil, nil
 	list.header = elementA
+	list.Draw()
 	list.Search([]byte("D"))
 
 	assert.Equal(t, entryE.Value, list.Search(entryE.Key).Value)
@@ -126,6 +127,27 @@ func Benchmark_SkipListBasicCRUD(b *testing.B) {
 		assert.Equal(b, []byte(val), searchVal.Value)
 	}
 	assert.Equal(b, int64(maxTime), list.size)
+}
+
+func TestDrawSkipList(t *testing.T) {
+	keys := []string{
+		"9", "1", "5", "3","2","6", "0", "4", "8", "7",
+	}
+	list := NewSkipList()
+	for _, key := range keys {
+		entry := codec.NewEntry([]byte(key), []byte(key))
+		list.Add(entry)
+	}
+	assert.Equal(t, len(keys), int(list.Size()))
+	for _, key :=range keys {
+		v := list.Search([]byte(key))
+		if v != nil {
+			t.Logf("%s=%s\n", key, v.Value)
+		} else {
+			t.FailNow()
+		}
+	}
+	list.Draw()
 }
 
 func TestConcurrentBasic(t *testing.T) {
