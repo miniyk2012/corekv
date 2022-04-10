@@ -42,6 +42,41 @@ func TestSkipList_compare(t *testing.T) {
 	assert.Equal(t, -1, list.compare(byte1score, byte1, elem))
 }
 
+/**
+	构造一个这样的跳表, 做Search的测试
+	A------------------E
+	A--------C---------E
+	A---B----C----D----E
+ */
+func TestSkipSearch(t *testing.T) {
+	list := NewSkipList()
+	list.maxLevel = 2
+	entryA := codec.NewEntry([]byte("A"), []byte("AVal"))
+	entryB := codec.NewEntry([]byte("B"), []byte("BVal"))
+	entryC := codec.NewEntry([]byte("C"), []byte("CVal"))
+	entryD := codec.NewEntry([]byte("D"), []byte("DVal"))
+	entryE := codec.NewEntry([]byte("E"), []byte("EVal"))
+	elementA := newElement(list.calcScore(entryA.Key), entryA, 2)
+	elementB := newElement(list.calcScore(entryB.Key), entryB, 0)
+	elementC := newElement(list.calcScore(entryC.Key), entryC, 1)
+	elementD := newElement(list.calcScore(entryD.Key), entryD, 0)
+	elementE := newElement(list.calcScore(entryE.Key), entryE, 2)
+	elementA.levels[2], elementA.levels[1], elementA.levels[0] = elementE, elementC, elementB
+	elementB.levels[0] = elementC
+	elementC.levels[1], elementC.levels[0] = elementE, elementD
+	elementD.levels[0] = elementE
+	elementE.levels[2], elementE.levels[1], elementE.levels[0] = nil, nil, nil
+	list.header = elementA
+	list.Search([]byte("D"))
+
+	assert.Equal(t, entryE.Value, list.Search(entryE.Key).Value)
+	assert.Equal(t, entryA.Value, list.Search(entryA.Key).Value)
+	assert.Equal(t, entryC.Value, list.Search(entryC.Key).Value)
+	assert.Equal(t, entryD.Value, list.Search(entryD.Key).Value)
+	assert.Nil(t, list.Search([]byte("0")))
+	assert.Nil(t, list.Search([]byte("F")))
+}
+
 func TestSkipListBasicCRUD(t *testing.T) {
 	list := NewSkipList()
 
