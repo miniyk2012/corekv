@@ -145,12 +145,13 @@ func TestConcurrentBasic(t *testing.T) {
 }
 
 func Benchmark_ConcurrentBasic(b *testing.B) {
+	n := 1000
 	l := NewSkipList()
 	var wg sync.WaitGroup
 	key := func(i int) []byte {
 		return []byte(fmt.Sprintf("%05d", i))
 	}
-	for i := 0; i < b.N; i++ {
+	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -160,7 +161,7 @@ func Benchmark_ConcurrentBasic(b *testing.B) {
 	wg.Wait()
 
 	// Check values. Concurrent reads.
-	for i := 0; i < b.N; i++ {
+	for i := 0; i < n; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
