@@ -75,14 +75,12 @@ func (list *SkipList) Add(data *codec.Entry) error {
 	}
 	preElements := make([]*Element, list.maxLevel+1) // 存储每层添加位置的前一个节点
 	i := list.maxLevel
-	var contain = false
 	for i >= 0 {
 		for preElement = curElement; curElement != nil; curElement = curElement.levels[i] {
 			cmp := list.compare(score, data.Key, curElement)
 			if cmp == 0 {
-				contain = true
 				curElement.Entry().Value = data.Value // key相等Value做替换, 而非添加节点
-				break
+				return nil
 			} else if cmp < 0 {
 				break
 			}
@@ -91,9 +89,6 @@ func (list *SkipList) Add(data *codec.Entry) error {
 		preElements[i] = preElement
 		curElement = preElement
 		i--
-	}
-	if contain {
-		return nil
 	}
 
 	addLevel := list.randLevel()
@@ -191,7 +186,7 @@ func (list *SkipList) Draw() {
 	i := list.maxLevel
 	for i >= 0 {
 		for curElement := list.header; curElement != nil; curElement = curElement.levels[i] {
-			fmt.Printf("%s--", curElement.Entry().Key)
+			fmt.Printf("%s(%s)--", curElement.Entry().Key,  curElement.Entry().Value)
 		}
 		i--
 		fmt.Println()

@@ -148,6 +148,14 @@ func TestDrawSkipList(t *testing.T) {
 		}
 	}
 	list.Draw()
+	entry := codec.NewEntry([]byte("3"), []byte("a3"))
+	list.Draw()
+	list.Add(entry)
+	entry = codec.NewEntry([]byte("6"), []byte("a6"))
+	list.Add(entry)
+	list.Draw()
+
+
 }
 
 func TestConcurrentBasic(t *testing.T) {
