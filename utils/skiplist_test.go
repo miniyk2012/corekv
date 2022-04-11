@@ -159,6 +159,25 @@ func TestDrawSkipList(t *testing.T) {
 	list.Draw()
 
 
+	keys = []string{
+		"9", "8", "7", "6", "5",
+	}
+	list = NewSkipList()
+	for _, key := range keys {
+		entry := codec.NewEntry([]byte(key), []byte(key))
+		list.Add(entry)
+	}
+	list.Draw()
+
+	keys = []string{
+		"1", "2", "3", "4", "8",
+	}
+	list = NewSkipList()
+	for _, key := range keys {
+		entry := codec.NewEntry([]byte(key), []byte(key))
+		list.Add(entry)
+	}
+	list.Draw()
 }
 
 func TestConcurrentBasic(t *testing.T) {

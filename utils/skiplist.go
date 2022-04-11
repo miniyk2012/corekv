@@ -180,7 +180,9 @@ func (list *SkipList) Size() int64 {
 
 func (list *SkipList) Draw() {
 	i := list.maxLevel
+	fmt.Println("*************")
 	for i >= 0 {
+		fmt.Printf("%d:", i)
 		for curElement := list.header; curElement != nil; curElement = curElement.levels[i] {
 			fmt.Printf("%s(%s)--", curElement.Entry().Key,  curElement.Entry().Value)
 		}
