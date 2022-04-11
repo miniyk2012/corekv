@@ -170,7 +170,7 @@ func TestDrawSkipList(t *testing.T) {
 	list.Draw()
 
 	keys = []string{
-		"1", "2", "3", "4", "8",
+		"1", "2", "3", "4", "5", "6", "7", "8","9",
 	}
 	list = NewSkipList()
 	for _, key := range keys {
