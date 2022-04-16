@@ -17,6 +17,7 @@ import (
 	"testing"
 )
 
+
 func (f Filter) String() string {
 	s := make([]byte, 8*len(f))
 	for i, x := range f {
