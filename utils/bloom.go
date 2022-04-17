@@ -14,6 +14,8 @@
 
 package utils
 
+import "math"
+
 // Filter is an encoded set of []byte keys.
 type Filter []byte
 
@@ -28,6 +30,24 @@ func (f Filter) MayContain(h uint32) bool {
 	//Implement me here!!!
 	//在这里实现判断一个数据是否在bloom过滤器中
 	//思路大概是经过K个Hash函数计算，判读对应位置是否被标记为1
+	if len(f) < 2 {
+		return false
+	}
+	nBits := (len(f) - 1) * 8
+	k := f[len(f)-1]
+	if k > 30 {
+		// This is reserved for potentially new encodings for short Bloom filters.
+		// Consider it a match.
+		return true
+	}
+	delta := h>>17 | h<<15
+	for j := uint8(0); j < k; j++ {
+		bitPosition := h % uint32(nBits)
+		if f[bitPosition/8]&(1<<(bitPosition%8)) == 0 {
+			return false
+		}
+		h += delta
+	}
 	return true
 }
 
@@ -46,13 +66,37 @@ func BloomBitsPerKey(numEntries int, fp float64) int {
 	//Implement me here!!!
 	//阅读bloom论文实现，并在这里编写公式
 	//传入参数numEntries是bloom中存储的数据个数，fp是false positive假阳性率
-	return 0
+	size := -1 * float64(numEntries) * math.Log(fp) / math.Pow(float64(0.69314718056), 2)
+	locs := math.Ceil(size / float64(numEntries))
+	return int(locs)
 }
 
 func appendFilter(keys []uint32, bitsPerKey int) []byte {
 	//Implement me here!!!
 	//在这里实现将多个Key值放入到bloom过滤器中
-	return make([]byte, 0)
+	k := uint32(float64(bitsPerKey) * 0.69)
+	if k < 1 {
+		k = 1
+	}
+	if k > 30 {
+		k = 30
+	}
+	nBits := bitsPerKey * len(keys) // 用于存储hash值的bit长度
+	if nBits < 64 {
+		nBits = 64
+	}
+	nBytes := (nBits + 7) / 8        // 需要多少长度的字节存储所有bits
+	filter := make([]byte, nBytes+1) // 最后以为存储k
+	for _, h := range keys {
+		delta := h>>17 | h<<15
+		for j := uint32(0); j < k; j++ {
+			bitPosition := h % uint32(nBits)
+			filter[bitPosition/8] |= 1 << (bitPosition % 8)
+			h += delta
+		}
+	}
+	filter[nBytes] = uint8(k)
+	return filter
 }
 
 // Hash implements a hashing algorithm similar to the Murmur hash.
