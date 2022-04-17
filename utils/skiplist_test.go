@@ -53,6 +53,20 @@ func TestSkipListBasicCRUD(t *testing.T) {
 	entry2_new := NewEntry([]byte(RandString(10)), []byte("Val1+1"))
 	list.Add(entry2_new)
 	assert.Equal(t, entry2_new.Value, list.Search(entry2_new.Key).Value)
+
+	// 乱序的加入数据
+	n := 100
+	randKeys := make([][]byte, n)
+	for i:=0; i<n; i++ {
+		key := RandString(16)
+		entryRand := NewEntry([]byte(key), []byte(key))
+		list.Add(entryRand)
+		randKeys[i] = []byte(key)
+	}
+	for _, key := range randKeys {
+		entry := list.Search(key)
+		assert.Equal(t,key, entry.Value)
+	}
 }
 
 func Benchmark_SkipListBasicCRUD(b *testing.B) {
