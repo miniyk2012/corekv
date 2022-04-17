@@ -55,7 +55,7 @@ func TestSkipListBasicCRUD(t *testing.T) {
 	assert.Equal(t, entry2_new.Value, list.Search(entry2_new.Key).Value)
 
 	// 乱序的加入数据
-	n := 100
+	n := 10
 	randKeys := make([][]byte, n)
 	for i:=0; i<n; i++ {
 		key := RandString(16)
