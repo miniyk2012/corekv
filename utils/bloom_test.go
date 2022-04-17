@@ -118,7 +118,7 @@ loop:
 				nFalsePositive++
 			}
 		}
-		fmt.Printf("nFalsePositive is %d\n", nFalsePositive)
+		// fmt.Printf("nFalsePositive is %d\n", nFalsePositive)
 		if nFalsePositive > 0.02*10000 {
 			t.Errorf("length=%d: %d false positives in 10000", length, nFalsePositive)
 			continue
@@ -133,6 +133,7 @@ loop:
 	if nMediocreFilters > nGoodFilters/5 {
 		t.Errorf("%d mediocre filters but only %d good filters", nMediocreFilters, nGoodFilters)
 	}
+	fmt.Printf("nMediocreFilters=%d,nGoodFilters=%d\n", nMediocreFilters, nGoodFilters)
 }
 
 func TestHash(t *testing.T) {
