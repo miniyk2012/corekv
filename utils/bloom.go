@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 package utils
 
 // Filter is an encoded set of []byte keys.
@@ -60,5 +59,28 @@ func appendFilter(keys []uint32, bitsPerKey int) []byte {
 func Hash(b []byte) uint32 {
 	//Implement me here!!!
 	//在这里实现高效的HashFunction
-	return 0
+	const (
+		seed = 0xbc9f1d34
+		m    = 0xc6a4a793
+	)
+	var h uint32 = uint32(seed) ^ uint32(len(b))*m
+
+	for ; len(b) >= 4; b = b[4:] {
+		h += uint32(b[0]) | uint32(b[1])<<8 | uint32(b[2])<<16 | uint32(b[3])<<24
+		h *= m
+		h ^= h >> 16
+	}
+	switch len(b) {
+	case 3:
+		h += uint32(b[2]) << 16
+		fallthrough
+	case 2:
+		h += uint32(b[1]) << 8
+		fallthrough
+	case 1:
+		h += uint32(b[0])
+		h *= m
+		h ^= h >> 24
+	}
+	return h
 }
