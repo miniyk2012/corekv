@@ -74,6 +74,9 @@ func BloomBitsPerKey(numEntries int, fp float64) int {
 func appendFilter(keys []uint32, bitsPerKey int) []byte {
 	//Implement me here!!!
 	//在这里实现将多个Key值放入到bloom过滤器中
+	if bitsPerKey < 0 {
+		bitsPerKey = 0
+	}
 	k := uint32(float64(bitsPerKey) * 0.69)
 	if k < 1 {
 		k = 1
@@ -86,7 +89,8 @@ func appendFilter(keys []uint32, bitsPerKey int) []byte {
 		nBits = 64
 	}
 	nBytes := (nBits + 7) / 8        // 需要多少长度的字节存储所有bits
-	filter := make([]byte, nBytes+1) // 最后以为存储k
+	filter := make([]byte, nBytes+1) // 最后一位存储k
+	nBits = nBytes * 8               // nBits必须是8的倍数
 	for _, h := range keys {
 		delta := h>>17 | h<<15
 		for j := uint32(0); j < k; j++ {

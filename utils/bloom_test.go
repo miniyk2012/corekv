@@ -14,9 +14,9 @@
 package utils
 
 import (
+	"fmt"
 	"testing"
 )
-
 
 func (f Filter) String() string {
 	s := make([]byte, 8*len(f))
@@ -118,6 +118,7 @@ loop:
 				nFalsePositive++
 			}
 		}
+		fmt.Printf("nFalsePositive is %d\n", nFalsePositive)
 		if nFalsePositive > 0.02*10000 {
 			t.Errorf("length=%d: %d false positives in 10000", length, nFalsePositive)
 			continue
