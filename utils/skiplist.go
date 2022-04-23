@@ -235,7 +235,7 @@ func (s *Skiplist) findNear(key []byte, less bool, allowEqual bool) (*node, bool
 			}
 			return x, false
 		}
-		// cmp < 0. In other words, x.key < key < next.
+		// cmp < 0. In other words, x.key < key < next.key
 		if level > 0 {
 			level--
 			continue
@@ -263,7 +263,7 @@ func (s *Skiplist) findSpliceForLevel(key []byte, before uint32, level int) (uin
 		next := beforeNode.getNextOffset(level)
 		nextNode := s.arena.getNode(next)
 		if nextNode == nil {
-			return before, next
+			return before, next   // 插在该层最后一个位置处
 		}
 		nextKey := nextNode.key(s.arena)
 		cmp := CompareKeys(key, nextKey)
@@ -328,7 +328,7 @@ func (s *Skiplist) Add(e *Entry) {
 	// create a node in the level above because it would have discovered the node in the base level.
 	for i := 0; i < height; i++ {
 		for {
-			if s.arena.getNode(prev[i]) == nil {
+			if s.arena.getNode(prev[i]) == nil {  // 如果原来只有2层, 突然增加到10层,你那么pre[3~10]都是nil
 				AssertTrue(i > 1) // This cannot happen in base level.
 				// We haven't computed prev, next for this level because height exceeds old listHeight.
 				// For these levels, we expect the lists to be sparse, so we can just search from head.

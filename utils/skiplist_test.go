@@ -137,7 +137,7 @@ func Benchmark_ConcurrentBasic(b *testing.B) {
 			defer wg.Done()
 			v := l.Search(key(i))
 			require.EqualValues(b, key(i), v.Value)
-			require.Nil(b, v)
+			//require.Nil(b, v)
 		}(i)
 	}
 	wg.Wait()
