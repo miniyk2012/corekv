@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	offsetSize = int(unsafe.Sizeof(uint32(0)))
+	offsetSize = int(unsafe.Sizeof(uint32(0)))  // 每个节点每层后续节点偏移量所占空间大小
 
 	// Always align nodes on 64-bit boundaries, even on 32-bit architectures,
 	// so that the node.value field is 64-bit aligned. This is necessary because
@@ -36,10 +36,11 @@ const (
 )
 
 // Arena should be lock-free.
+// 整个跳表都分配在Arena里
 type Arena struct {
-	n          uint32
-	shouldGrow bool
-	buf        []byte
+	n          uint32   // 当前已经分配出去的内存大小, offset
+	shouldGrow bool     // 默认空间大小锁定, 因为扩容不支持并发操作
+	buf        []byte   // 所有的内存空间
 }
 
 // newArena returns a new arena.
@@ -54,8 +55,9 @@ func newArena(n int64) *Arena {
 	return out
 }
 
+// 申请内存, 返回申请空间的起始位置, 支持并发分配, 不支持并发扩容.
 func (s *Arena) allocate(sz uint32) uint32 {
-	offset := atomic.AddUint32(&s.n, sz)
+	offset := atomic.AddUint32(&s.n, sz)  //
 	if !s.shouldGrow {
 		AssertTrue(int(offset) <= len(s.buf))
 		return offset - sz
@@ -87,6 +89,7 @@ func (s *Arena) size() int64 {
 
 // putNode allocates a node in the arena. The node is aligned on a pointer-sized
 // boundary. The arena offset of the node is returned.
+// 返回对齐后的node的起始地址
 func (s *Arena) putNode(height int) uint32 {
 	// Compute the amount of the tower that will never be used, since the height
 	// is less than maxHeight.
@@ -97,6 +100,7 @@ func (s *Arena) putNode(height int) uint32 {
 	n := s.allocate(l)
 
 	// Return the aligned offset.
+	// 将node的起始地址按8字节对齐后返回, 对node的分配读取也就都是对齐的了. 主要原因是如果node不按内存对齐, 那么去读取的时候性能会降低
 	m := (n + uint32(nodeAlign)) & ^uint32(nodeAlign)
 	return m
 }

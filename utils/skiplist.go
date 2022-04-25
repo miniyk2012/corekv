@@ -66,7 +66,7 @@ type node struct {
 	// is deliberately truncated to not include unneeded tower elements.
 	//
 	// All accesses to elements should use CAS operations, with no need to lock.
-	tower [maxHeight]uint32
+	tower [maxHeight]uint32   // 每层后续节点的偏移量.
 }
 
 type Skiplist struct {
@@ -283,7 +283,7 @@ func (s *Skiplist) getHeight() int32 {
 	return atomic.LoadInt32(&s.height)
 }
 
-// Put inserts the key-value pair.
+// Add inserts the key-value pair.
 func (s *Skiplist) Add(e *Entry) {
 	// Since we allow overwrite, we may not need to create a new node. We might not even need to
 	// increase the height. Let's defer these actions.
@@ -385,7 +385,7 @@ func (s *Skiplist) findLast() *node {
 	}
 }
 
-// Get gets the value associated with the key. It returns a valid value if it finds equal or earlier
+// Search gets the value associated with the key. It returns a valid value if it finds equal or earlier
 // version of the same key.
 func (s *Skiplist) Search(key []byte) ValueStruct {
 	n, _ := s.findNear(key, false, true) // findGreaterOrEqual.
@@ -404,7 +404,7 @@ func (s *Skiplist) Search(key []byte) ValueStruct {
 	return vs
 }
 
-// NewIterator returns a skiplist iterator.  You have to Close() the iterator.
+// NewSkipListIterator returns a skiplist iterator.  You have to Close() the iterator.
 func (s *Skiplist) NewSkipListIterator() Iterator {
 	s.IncrRef()
 	return &SkipListIterator{list: s}
@@ -414,7 +414,7 @@ func (s *Skiplist) NewSkipListIterator() Iterator {
 // arena.
 func (s *Skiplist) MemSize() int64 { return s.arena.size() }
 
-// Iterator is an iterator over skiplist object. For new objects, you just
+// SkipListIterator is an iterator over skiplist object. For new objects, you just
 // need to initialize Iterator.list.
 type SkipListIterator struct {
 	list *Skiplist

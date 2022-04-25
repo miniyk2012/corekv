@@ -42,8 +42,9 @@ func (vs *ValueStruct) DecodeValue(buf []byte) {
 	vs.Value = buf[1+sz:]
 }
 
-//对value进行编码，并将编码后的字节写入byte
-//这里将过期时间和value的值一起编码
+// EncodeValue 对value进行编码，并将编码后的字节写入byte
+// 这里将过期时间和value的值一起编码
+// 返回编码的长度(似乎没用到)
 func (vs *ValueStruct) EncodeValue(b []byte) uint32 {
 	b[0] = vs.Meta
 	sz := binary.PutUvarint(b[1:], vs.ExpiresAt)

@@ -15,6 +15,7 @@
 package utils
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,8 +28,10 @@ func TestValueStruct(t *testing.T) {
 		ExpiresAt: 213123123123,
 	}
 	data := make([]byte, v.EncodedSize())
-	v.EncodeValue(data)
+	size := v.EncodeValue(data)
 	var vv ValueStruct
 	vv.DecodeValue(data)
 	assert.Equal(t, vv, v)
+	assert.Equal(t, size, v.EncodedSize())
+	fmt.Printf("encoded size is %d byte\n", size)
 }
