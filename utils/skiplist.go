@@ -101,7 +101,7 @@ func (s *Skiplist) DecrRef() {
 	s.arena = nil
 }
 
-
+// Draw plot Skiplist, align represents align the same node in different level
 func (s *Skiplist) Draw(align bool) {
 	reverseTree := make([][]string, s.getHeight())
 	head := s.getHead()
@@ -121,7 +121,7 @@ func (s *Skiplist) Draw(align bool) {
 		}
 	}
 
-	// 对齐
+	// align
 	if align && s.getHeight() > 1 {
 		baseFloor := reverseTree[0]
 		for level := 1; level < int(s.getHeight()); level++ {
@@ -140,8 +140,8 @@ func (s *Skiplist) Draw(align bool) {
 		}
 	}
 
-	// 绘制
-	fmt.Println(strings.Repeat("*", 30)+"分割线"+strings.Repeat("*", 30))
+	// plot
+	fmt.Println(strings.Repeat("*", 30) + "分割线" + strings.Repeat("*", 30))
 	for level := int(s.getHeight()) - 1; level >= 0; level-- {
 		fmt.Printf("%d: ", level)
 		for pos, ele := range reverseTree[level] {
