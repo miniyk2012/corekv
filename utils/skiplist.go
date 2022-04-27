@@ -101,30 +101,8 @@ func (s *Skiplist) DecrRef() {
 	s.arena = nil
 }
 
-func (s *Skiplist) Draw() {
-	head := s.getHead()
-	for level := int(s.getHeight() - 1); level >= 0; level-- {
-		fmt.Printf("%d: ", level)
-		next := head
-		for {
-			next = s.getNext(next, level)
-			if next != nil {
-				key := next.key(s.arena)
-				vs := next.getVs(s.arena)
-				if s.getNext(next, level) == nil {
-					fmt.Printf("%s(%s)", key, vs.Value)
-				} else {
-					fmt.Printf("%s(%s)->", key, vs.Value)
-				}
-			} else {
-				fmt.Println()
-				break
-			}
-		}
-	}
-}
 
-func (s *Skiplist) Draw2() {
+func (s *Skiplist) Draw(align bool) {
 	reverseTree := make([][]string, s.getHeight())
 	head := s.getHead()
 	for level := int(s.getHeight()) - 1; level >= 0; level-- {
@@ -144,7 +122,7 @@ func (s *Skiplist) Draw2() {
 	}
 
 	// 对齐
-	if s.getHeight() > 1 {
+	if align && s.getHeight() > 1 {
 		baseFloor := reverseTree[0]
 		for level := 1; level < int(s.getHeight()); level++ {
 			pos := 0

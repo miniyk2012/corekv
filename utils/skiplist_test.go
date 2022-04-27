@@ -54,7 +54,7 @@ func TestSkipListBasicCRUD(t *testing.T) {
 	entry2_new := NewEntry([]byte(RandString(10)), []byte("Val1+1"))
 	list.Add(entry2_new)
 	assert.Equal(t, entry2_new.Value, list.Search(entry2_new.Key).Value)
-	list.Draw()
+	list.Draw(false)
 
 	// 乱序的加入数据
 	n := 10
@@ -69,20 +69,21 @@ func TestSkipListBasicCRUD(t *testing.T) {
 		entry := list.Search(key)
 		assert.Equal(t, key, entry.Value)
 	}
-	list.Draw()
+	list.Draw(false)
 }
 
 func TestDrawList(t *testing.T) {
 	list := NewSkiplist(1000)
 	// 乱序的加入数据
-	n := 12
+	n := 10
 	for i:=0; i<n; i++ {
 		index := strconv.Itoa(r.Intn(90)+10)
 		key := index + RandString(8)
 		entryRand := NewEntry([]byte(key), []byte(index))
 		list.Add(entryRand)
 	}
-	list.Draw2()
+	list.Draw(true)
+	list.Draw(false)
 }
 
 func Benchmark_SkipListBasicCRUD(b *testing.B) {
