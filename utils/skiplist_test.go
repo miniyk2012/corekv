@@ -46,15 +46,16 @@ func TestSkipListBasicCRUD(t *testing.T) {
 	list.Add(entry2)
 	vs = list.Search(entry2.Key)
 	assert.Equal(t, entry2.Value, vs.Value)
+	list.Draw(true)
 
 	//Get a not exist entry
 	assert.Nil(t, list.Search([]byte(RandString(10))).Value)
 
 	//Update a entry
-	entry2_new := NewEntry([]byte(RandString(10)), []byte("Val1+1"))
+	entry2_new := NewEntry(entry1.Key, []byte("Val1+1"))
 	list.Add(entry2_new)
 	assert.Equal(t, entry2_new.Value, list.Search(entry2_new.Key).Value)
-	list.Draw(false)
+	list.Draw(true)
 
 	// 乱序的加入数据
 	n := 10
