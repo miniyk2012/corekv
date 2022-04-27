@@ -141,12 +141,11 @@ func (s *Skiplist) Draw(align bool) {
 	}
 
 	// plot
-	fmt.Println(strings.Repeat("*", 30) + "分割线" + strings.Repeat("*", 30))
 	for level := int(s.getHeight()) - 1; level >= 0; level-- {
 		fmt.Printf("%d: ", level)
 		for pos, ele := range reverseTree[level] {
 			if pos == len(reverseTree[level])-1 {
-				fmt.Printf("%s  ", ele)
+				fmt.Printf("%s", ele)
 			} else {
 				fmt.Printf("%s->", ele)
 			}
