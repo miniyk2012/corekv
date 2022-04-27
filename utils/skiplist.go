@@ -33,9 +33,11 @@ Key differences:
 package utils
 
 import (
+	"fmt"
 	"github.com/pkg/errors"
 	"log"
 	"math"
+	"strings"
 	"sync/atomic"
 	_ "unsafe"
 )
@@ -45,12 +47,13 @@ const (
 	heightIncrease = math.MaxUint32 / 3
 )
 
+// node 代表节点, 存储了key和value在area的偏移量, 以及每层后续节点的偏移量
 type node struct {
 	// Multiple parts of the value are encoded as a single uint64 so that it
 	// can be atomically loaded and stored:
 	//   value offset: uint32 (bits 0-31)
 	//   value size  : uint16 (bits 32-63)
-	value uint64
+	value uint64 // 指向value
 
 	// A byte slice is 24 bytes. We are trying to save space here.
 	keyOffset uint32 // Immutable. No need to lock to access key.
@@ -66,13 +69,14 @@ type node struct {
 	// is deliberately truncated to not include unneeded tower elements.
 	//
 	// All accesses to elements should use CAS operations, with no need to lock.
-	tower [maxHeight]uint32   // 每层后续节点的偏移量.
+	tower [maxHeight]uint32 // 每层后续节点的偏移量.
 }
 
+// Skiplist 每个跳表关联一个area内存空间
 type Skiplist struct {
-	height     int32 // Current height. 1 <= height <= kMaxHeight. CAS.
-	headOffset uint32
-	ref        int32
+	height     int32  // Current height. 1 <= height <= kMaxHeight. CAS.
+	headOffset uint32 // 头节点偏移量, header是哑元, 不存key,value
+	ref        int32  // 未来其他组件用的到
 	arena      *Arena
 	OnClose    func()
 }
@@ -97,6 +101,83 @@ func (s *Skiplist) DecrRef() {
 	s.arena = nil
 }
 
+func (s *Skiplist) Draw() {
+	head := s.getHead()
+	for level := int(s.getHeight() - 1); level >= 0; level-- {
+		fmt.Printf("%d: ", level)
+		next := head
+		for {
+			next = s.getNext(next, level)
+			if next != nil {
+				key := next.key(s.arena)
+				vs := next.getVs(s.arena)
+				if s.getNext(next, level) == nil {
+					fmt.Printf("%s(%s)", key, vs.Value)
+				} else {
+					fmt.Printf("%s(%s)->", key, vs.Value)
+				}
+			} else {
+				fmt.Println()
+				break
+			}
+		}
+	}
+}
+
+func (s *Skiplist) Draw2() {
+	reverseTree := make([][]string, s.getHeight())
+	head := s.getHead()
+	for level := int(s.getHeight()) - 1; level >= 0; level-- {
+		next := head
+		for {
+			var nodeStr string
+			next = s.getNext(next, level)
+			if next != nil {
+				key := next.key(s.arena)
+				vs := next.getVs(s.arena)
+				nodeStr = fmt.Sprintf("%s(%s)", key, vs.Value)
+			} else {
+				break
+			}
+			reverseTree[level] = append(reverseTree[level], nodeStr)
+		}
+	}
+
+	// 对齐
+	if s.getHeight() > 1 {
+		baseFloor := reverseTree[0]
+		for level := 1; level < int(s.getHeight()); level++ {
+			pos := 0
+			for _, ele := range baseFloor {
+				if pos == len(reverseTree[level]) {
+					break
+				}
+				if ele != reverseTree[level][pos] {
+					newStr := fmt.Sprintf(strings.Repeat("-", len(ele)))
+					reverseTree[level] = append(reverseTree[level][:pos+1], reverseTree[level][pos:]...)
+					reverseTree[level][pos] = newStr
+				}
+				pos++
+			}
+		}
+	}
+
+	// 绘制
+	fmt.Println(strings.Repeat("*", 30)+"分割线"+strings.Repeat("*", 30))
+	for level := int(s.getHeight()) - 1; level >= 0; level-- {
+		fmt.Printf("%d: ", level)
+		for pos, ele := range reverseTree[level] {
+			if pos == len(reverseTree[level])-1 {
+				fmt.Printf("%s  ", ele)
+			} else {
+				fmt.Printf("%s->", ele)
+			}
+		}
+		fmt.Println()
+	}
+}
+
+// newNode 在area里申请空间存储node,key,value
 func newNode(arena *Arena, key []byte, v ValueStruct, height int) *node {
 	// The base level is already allocated in the node struct.
 	nodeOffset := arena.putNode(height)
@@ -134,25 +215,31 @@ func NewSkiplist(arenaSize int64) *Skiplist {
 	}
 }
 
-func (s *node) getValueOffset() (uint32, uint32) {
-	value := atomic.LoadUint64(&s.value)
+func (n *node) getValueOffset() (uint32, uint32) {
+	value := atomic.LoadUint64(&n.value)
 	return decodeValue(value)
 }
 
-func (s *node) key(arena *Arena) []byte {
-	return arena.getKey(s.keyOffset, s.keySize)
+func (n *node) key(arena *Arena) []byte {
+	return arena.getKey(n.keyOffset, n.keySize)
 }
 
-func (s *node) setValue(arena *Arena, vo uint64) {
-	atomic.StoreUint64(&s.value, vo)
+func (n *node) setValue(arena *Arena, vo uint64) {
+	atomic.StoreUint64(&n.value, vo)
 }
 
-func (s *node) getNextOffset(h int) uint32 {
-	return atomic.LoadUint32(&s.tower[h])
+func (n *node) getNextOffset(h int) uint32 {
+	return atomic.LoadUint32(&n.tower[h])
 }
 
-func (s *node) casNextOffset(h int, old, val uint32) bool {
-	return atomic.CompareAndSwapUint32(&s.tower[h], old, val)
+func (n *node) casNextOffset(h int, old, val uint32) bool {
+	return atomic.CompareAndSwapUint32(&n.tower[h], old, val)
+}
+
+// getVs return ValueStruct stored in node
+func (n *node) getVs(arena *Arena) ValueStruct {
+	valOffset, valSize := n.getValueOffset()
+	return arena.getVal(valOffset, valSize)
 }
 
 // Returns true if key is strictly > n.key.
@@ -263,7 +350,7 @@ func (s *Skiplist) findSpliceForLevel(key []byte, before uint32, level int) (uin
 		next := beforeNode.getNextOffset(level)
 		nextNode := s.arena.getNode(next)
 		if nextNode == nil {
-			return before, next   // 插在该层最后一个位置处
+			return before, next // 插在该层最后一个位置处
 		}
 		nextKey := nextNode.key(s.arena)
 		cmp := CompareKeys(key, nextKey)
@@ -328,7 +415,7 @@ func (s *Skiplist) Add(e *Entry) {
 	// create a node in the level above because it would have discovered the node in the base level.
 	for i := 0; i < height; i++ {
 		for {
-			if s.arena.getNode(prev[i]) == nil {  // 如果原来只有2层, 突然增加到10层,你那么pre[3~10]都是nil
+			if s.arena.getNode(prev[i]) == nil { // 如果原来只有2层, 突然增加到10层,你那么pre[3~10]都是nil
 				AssertTrue(i > 1) // This cannot happen in base level.
 				// We haven't computed prev, next for this level because height exceeds old listHeight.
 				// For these levels, we expect the lists to be sparse, so we can just search from head.

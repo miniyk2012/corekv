@@ -16,6 +16,7 @@ package utils
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -53,20 +54,35 @@ func TestSkipListBasicCRUD(t *testing.T) {
 	entry2_new := NewEntry([]byte(RandString(10)), []byte("Val1+1"))
 	list.Add(entry2_new)
 	assert.Equal(t, entry2_new.Value, list.Search(entry2_new.Key).Value)
+	list.Draw()
 
 	// 乱序的加入数据
 	n := 10
 	randKeys := make([][]byte, n)
 	for i:=0; i<n; i++ {
-		key := RandString(16)
+		key := strconv.Itoa(r.Intn(90)+10) + RandString(16)
 		entryRand := NewEntry([]byte(key), []byte(key))
 		list.Add(entryRand)
 		randKeys[i] = []byte(key)
 	}
 	for _, key := range randKeys {
 		entry := list.Search(key)
-		assert.Equal(t,key, entry.Value)
+		assert.Equal(t, key, entry.Value)
 	}
+	list.Draw()
+}
+
+func TestDrawList(t *testing.T) {
+	list := NewSkiplist(1000)
+	// 乱序的加入数据
+	n := 12
+	for i:=0; i<n; i++ {
+		index := strconv.Itoa(r.Intn(90)+10)
+		key := index + RandString(8)
+		entryRand := NewEntry([]byte(key), []byte(index))
+		list.Add(entryRand)
+	}
+	list.Draw2()
 }
 
 func Benchmark_SkipListBasicCRUD(b *testing.B) {
