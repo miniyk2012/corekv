@@ -17,6 +17,7 @@ package utils
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 
@@ -84,6 +85,7 @@ func TestDrawList(t *testing.T) {
 		list.Add(entryRand)
 	}
 	list.Draw(true)
+	fmt.Println(strings.Repeat("*", 30) + "分割线" + strings.Repeat("*", 30))
 	list.Draw(false)
 }
 
