@@ -56,6 +56,8 @@ func (f Filter) MayContain(h uint32) bool {
 //
 // A good bitsPerKey value is 10, which yields a filter with ~ 1% false
 // positive rate.
+//  bloom过滤器提供的接口只有一次性初始化所有key的接口, 未提供每次往里面加一个key的方法
+// 因为每次sstable的dump是一整个文件一次性dump, 因此key一次性放到一个bloom过滤器里就行了
 func NewFilter(keys []uint32, bitsPerKey int) Filter {
 	return Filter(appendFilter(keys, bitsPerKey))
 }
