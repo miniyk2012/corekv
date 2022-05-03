@@ -31,7 +31,7 @@ type stringStruct struct {
 //go:linkname memhash runtime.memhash
 func memhash(p unsafe.Pointer, h, s uintptr) uintptr
 
-// ParseKey parses the actual key from the key bytes.
+// ParseKey parses the actual key from the key bytes. 后8位存储版本时间戳
 func ParseKey(key []byte) []byte {
 	if len(key) < 8 {
 		return key
