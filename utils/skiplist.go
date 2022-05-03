@@ -291,7 +291,7 @@ func (s *Skiplist) findNear(key []byte, less bool, allowEqual bool) (*node, bool
 			}
 			// We want <. If not base level, we should go closer in the next level.
 			// 根据这个: x.key < key == next.key
-			// 额, 不允许本层拿相等的,因为下一层可能还有更小的
+			// 不能返回本层的x, 因为下一层可能还有更接近的
 			if level > 0 {
 				level--
 				continue
@@ -396,21 +396,21 @@ func (s *Skiplist) Add(e *Entry) {
 
 	// We always insert from the base level and up. After you add a node in base level, we cannot
 	// create a node in the level above because it would have discovered the node in the base level.
-	// 保证从0层开始插入node, 上面这句话意思是如果同时插入同一个key的话, 会在底层时就发现对方.
+	// 保证从0层开始插入node, 上面这句话意思是如果多个协程同时插入同一个key的话, 会在底层时就发现对方.
 	for i := 0; i < height; i++ {
 		for {  // 这里的for是无限循环, 直到CAS更新该层成功
 			if s.arena.getNode(prev[i]) == nil { // 这里是跳表层数增长时才有的逻辑. 如果原来只有2层, 突然增加到10层, 那么pre[3~10]都是nil
 				// 这里也不用考虑并发, 因为节点前后关系在这里并不会修改
-				AssertTrue(i > 1) // This cannot happen in base level. 第0层的前一个节点肯定不为nil, L364:prev[listHeight] = s.headOffset决定的
+				AssertTrue(i > 1) // This cannot happen in base level. 第0层的前一个节点是pre[1], 肯定不为nil. L364:prev[listHeight] = s.headOffset决定的
 				// We haven't computed prev, next for this level because height exceeds old listHeight.
 				// For these levels, we expect the lists to be sparse, so we can just search from head.
-				// 如果并发请求导致在这些新的层有了一些节点, 肯定是稀疏的, 在其中找到前后节点; 当然也可能没并发请求, 这些层都是空的. findSpliceForLevel对它们处理逻辑是一致的
+				// 如果并发请求导致在这些新的层有了一些节点, 肯定是稀疏的(因此从head开始找也不会慢), 在其中找到前后节点; 当然也可能没并发请求, 这些层都是空的. findSpliceForLevel对它们处理逻辑是一致的
 				prev[i], next[i] = s.findSpliceForLevel(key, s.headOffset, i)
 				// Someone adds the exact same key before we are able to do so. This can only happen on
-				// the base level. But we know we are not on the base level.
+				// the base level. But we know we are not on the base level. 见L424的解释
 				AssertTrue(prev[i] != next[i])
 			}
-			x.tower[i] = next[i]  // 新节点的后继不会并发
+			x.tower[i] = next[i]  // 新节点连后继不会有并发问题
 			pnode := s.arena.getNode(prev[i])
 			if pnode.casNextOffset(i, next[i], s.arena.getNodeOffset(x)) {  // 前驱更新要并发
 				// Managed to insert x between prev[i] and next[i]. Go to the next level.
