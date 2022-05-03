@@ -77,6 +77,7 @@ func Benchmark_SkipListBasicCRUD(b *testing.B) {
 		searchVal := list.Search([]byte(key))
 		assert.Equal(b, searchVal.Value, []byte(val))
 	}
+	fmt.Println("currentHeight=", list.currHeight)
 }
 
 func TestConcurrentBasic(t *testing.T) {
