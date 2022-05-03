@@ -123,7 +123,7 @@ func Benchmark_ConcurrentBasic(b *testing.B) {
 			defer wg.Done()
 			v := l.Search(key(i))
 			require.EqualValues(b, key(i), v.Value)
-			require.Nil(b, v)
+			require.NotNil(b, v)
 		}(i)
 	}
 	wg.Wait()
@@ -141,13 +141,13 @@ func TestSkipListIterator(t *testing.T) {
 	list.Add(entry2)
 	assert.Equal(t, entry2.Value, list.Search(entry2.Key).Value)
 
-	//Update a entry
-	entry2_new := NewEntry([]byte(RandString(10)), []byte(RandString(10)))
+	//Update an entry
+	entry2_new := NewEntry(entry2.Key, []byte(RandString(10)))
 	list.Add(entry2_new)
 	assert.Equal(t, entry2_new.Value, list.Search(entry2_new.Key).Value)
 
 	iter := list.NewSkipListIterator()
 	for iter.Rewind(); iter.Valid(); iter.Next() {
-		fmt.Printf("iter key %s, value %s", iter.Item().Entry().Key, iter.Item().Entry().Value)
+		fmt.Printf("iter key %s, value %s\n", iter.Item().Entry().Key, iter.Item().Entry().Value)
 	}
 }
