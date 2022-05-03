@@ -38,6 +38,7 @@ func newNode(arena *Arena, key []byte, v ValueStruct, height int) *Node {
 	node.keyOffset = keyOffset
 	node.keySize = uint16(len(key))
 	node.height = uint16(height)
+	node.score = calcScore(key)
 	return node
 }
 
@@ -146,12 +147,11 @@ func (list *SkipList) Search(key []byte) (e *Entry) {
 	current := list.arena.getNode(list.headOffset)
 	for i := int(list.currHeight - 1); i >= 0; i-- {
 		for {
-			next := list.arena.getNode(current.getNextOffset(i))
+			next := list.getNext(current, i)
 			if next == nil {
 				// 进入下一层
 				break
 			}
-			next.score = calcScore(next.key(list.arena))
 			cmp := list.compare(calcScore(key), key, next)
 			if cmp == 0 {
 				return &Entry{Key: key, Value: next.Value(list.arena)}
@@ -217,7 +217,7 @@ func (list *SkipList) randLevel() int {
 //拿到某个节点，在某个高度上的next节点
 //如果该节点已经是该层最后一个节点（该节点的level[height]将是0），会返回nil
 func (list *SkipList) getNext(e *Node, height int) *Node {
-	return nil
+	return list.arena.getNode(e.getNextOffset(height))
 }
 
 type SkipListIter struct {
