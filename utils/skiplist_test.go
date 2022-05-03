@@ -59,12 +59,12 @@ func TestSkipListBasicCRUD(t *testing.T) {
 //当申请的内存超过预设的大小时，缺没有flush到sst的操作，所以会出错
 //关于SST的相关知识，在lession5有进行讲解
 func Benchmark_SkipListBasicCRUD(b *testing.B) {
-	list := NewSkipList(1000)
+	//list := NewSkipList(1000)
 	key, val := "", ""
-	maxTime := 1000000
+	//maxTime := 1000000
 
-	//list := NewSkipList(100000)
-	//maxTime := 1000
+	list := NewSkipList(100000)
+	maxTime := 1000
 
 	for i := 0; i < maxTime; i++ {
 		//number := rand.Intn(10000)
