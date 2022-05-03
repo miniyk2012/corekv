@@ -34,6 +34,8 @@ func RandString(len int) string {
 
 func TestSkipListBasicCRUD(t *testing.T) {
 	list := NewSkipList(1000)
+	//Get a not exist entry
+	assert.Nil(t, list.Search([]byte("Key1")))
 
 	//Put & Get
 	entry1 := NewEntry([]byte("Key1"), []byte("Val1"))
