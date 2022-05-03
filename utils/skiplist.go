@@ -22,6 +22,7 @@ func NewSkipList(arenaSize int64) *SkipList {
 	head := newNode(area, nil, ValueStruct{}, defaultMaxLevel)
 	headOffset := area.getNodeOffset(head)
 	s := SkipList{
+		maxLevel: defaultMaxLevel,
 		currHeight: 1,
 		headOffset: headOffset,
 		arena:      area,
@@ -84,57 +85,54 @@ func (list *SkipList) MemSize() int64 { return list.arena.Size() }
 func (list *SkipList) Add(data *Entry) error {
 	list.lock.Lock()
 	defer list.lock.Unlock()
-	score := calcScore(data.Key)
-	var elem *Node
-	value := ValueStruct{
-		Value: data.Value,
-	}
 
-	//从当前最大高度开始
-	max := list.currHeight
-	//拿到头节点，从第一个开始
-	prevElem := list.arena.getNode(list.headOffset)
-	//用来记录访问路径
-	var prevElemHeaders [defaultMaxLevel]*Node
+	prevs := [defaultMaxLevel]uint32{}
+	successors := [defaultMaxLevel]uint32{}
 
-	for i := max - 1; i >= 0; {
-		//keep visit path here
-		prevElemHeaders[i] = prevElem
-
-		for next := list.getNext(prevElem, int(i)); next != nil; next = list.getNext(prevElem, int(i)) {
-			if comp := list.compare(score, data.Key, next); comp <= 0 {
-				if comp == 0 {
-					vo := list.arena.putVal(value)
-					encV := encodeValue(vo, value.EncodedSize())
-					next.value = encV
-					return nil
-				}
-
-				//find the insert position
+	// 先找到data每层的前后节点
+	current := list.arena.getNode(list.headOffset)
+	for i := int(list.currHeight - 1); i >= 0; i-- {
+		for {
+			next := list.getNext(current, i)
+			if next == nil {
+				// 进入下一层
+				prevs[i] = list.arena.getNodeOffset(current)
+				successors[i] = 0
 				break
 			}
-
-			//just like linked-list next
-			prevElem = next
-			prevElemHeaders[i] = prevElem
-		}
-
-		topLevel := prevElem.levels[i]
-
-		//to skip same prevHeader's next and fill next elem into temp element
-		for i--; i >= 0 && prevElem.levels[i] == topLevel; i-- {
-			prevElemHeaders[i] = prevElem
+			cmp := list.compare(calcScore(data.Key), data.Key, next)
+			if cmp == 0 {
+				// 替换value后return
+				val := ValueStruct{Value:data.Value}
+				valOffset := list.arena.putVal(val)
+				next.value = encodeValue(valOffset, val.EncodedSize())
+				return nil
+			} else if cmp > 0 {
+				// next.key < key
+				current = next
+			} else {
+				// current.key < key < next.key, 进入下一层
+				prevs[i] = list.arena.getNodeOffset(current)
+				successors[i] = list.arena.getNodeOffset(next)
+				break
+			}
 		}
 	}
 
-	level := list.randLevel()
+	// 插入的节点超出currHeight层, 设置前驱是head, 后继是nil
+	height := int32(list.randLevel())
+	if height > list.currHeight {
+		for i:=list.currHeight;i<height;i++ {
+			prevs[i] = list.headOffset
+			successors[i] = 0
+		}
+		list.currHeight = height
+	}
 
-	elem = newNode(list.arena, data.Key, ValueStruct{Value: data.Value}, level)
-	//to add elem to the skiplist
-	off := list.arena.getNodeOffset(elem)
-	for i := 0; i < level; i++ {
-		elem.levels[i] = prevElemHeaders[i].levels[i]
-		prevElemHeaders[i].levels[i] = off
+	node := newNode(list.arena, data.Key, ValueStruct{Value:data.Value}, int(height))
+	for i:=int32(0); i<height; i++ {
+		node.levels[i] = successors[i]
+		list.arena.getNode(prevs[i]).levels[i] = list.arena.getNodeOffset(node)
 	}
 
 	return nil
