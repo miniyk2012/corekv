@@ -447,14 +447,12 @@ func (s *SkipListIterator) Valid() bool { return s.n != nil }
 
 // Key returns the key at the current position.
 func (s *SkipListIterator) Key() []byte {
-	//implement me here
 	return s.list.arena.getKey(s.n.keyOffset, s.n.keySize)
 }
 
 // Value returns value.
 func (s *SkipListIterator) Value() ValueStruct {
-	//implement me here
-	return s.list.arena.getVal(decodeValue(s.n.value))
+	return s.list.arena.getVal(s.n.getValueOffset())
 }
 
 // ValueUint64 returns the uint64 value of the current node.
@@ -476,12 +474,12 @@ func (s *SkipListIterator) Prev() {
 
 // 找到 >= target 的第一个节点
 func (s *SkipListIterator) Seek(target []byte) {
-	s.n, _ = s.list.findNear(target, false, false)
+	s.n, _ = s.list.findNear(target, false, true)  // find >=
 }
 
 // 找到 <= target 的第一个节点
 func (s *SkipListIterator) SeekForPrev(target []byte) {
-	s.n, _ = s.list.findNear(target, true, true)
+	s.n, _ = s.list.findNear(target, true, true)  // find <=
 }
 
 //定位到链表的第一个节点
