@@ -29,7 +29,7 @@ func (f Filter) MayContainKey(k []byte) bool {
 func (f Filter) MayContain(h uint32) bool {
 	//Implement me here!!!
 	//在这里实现判断一个数据是否在bloom过滤器中
-	//思路大概是经过K个Hash函数计算，判读对应位置是否被标记为1
+	//思路是K个Hash函数计算，对应位置全1返回true, 有0就返回false
 	if len(f) < 2 {
 		return false
 	}
