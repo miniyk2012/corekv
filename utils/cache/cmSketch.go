@@ -37,7 +37,11 @@ func newCmSketch(numCounters int64) *cmSketch {
 func (s *cmSketch) Increment(hashed uint64) {
 	for i := range s.rows {
 		// mask: uint64(numCounters - 1)
+<<<<<<< HEAD
 		s.rows[i].increment((hashed ^ s.seed[i]) & s.mask)  // hash & s.mask = hash % (numCounters - 1)
+=======
+		s.rows[i].increment((hashed ^ s.seed[i]) & s.mask)  // hash & s.mask保证了传入的n一定小于等于rows分配到的numCounter数.
+>>>>>>> d21a80c ([feat] slru)
 	}
 }
 
