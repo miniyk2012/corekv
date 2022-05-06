@@ -4,8 +4,8 @@ import "container/list"
 
 type segmentedLRU struct {
 	data                     map[uint64]*list.Element
-	stageOneCap, stageTwoCap int
-	stageOne, stageTwo       *list.List
+	stageOneCap, stageTwoCap int  // 2个区各自的容量
+	stageOne, stageTwo       *list.List  // One是Probation区, Two是Protected区
 }
 
 const (

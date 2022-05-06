@@ -3,9 +3,9 @@ package cache
 import "container/list"
 
 type windowLRU struct {
-	data map[uint64]*list.Element
+	data map[uint64]*list.Element  // data的value存储了链表元素的地址
 	cap  int
-	list *list.List
+	list *list.List  // 链表元素存储了storeItem的地址
 }
 
 type storeItem struct {

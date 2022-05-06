@@ -98,10 +98,10 @@ func appendFilter(keys []uint32, bitsPerKey int) []byte {
 		for j := uint32(0); j < k; j++ {
 			bitPosition := h % uint32(nBits)
 			filter[bitPosition/8] |= 1 << (bitPosition % 8)
-			h += delta
+			h += delta  // k个hash值
 		}
 	}
-	filter[nBytes] = uint8(k)
+	filter[nBytes] = uint8(k)  // 最后一位存储k
 	return filter
 }
 

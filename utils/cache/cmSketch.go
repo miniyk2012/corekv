@@ -33,9 +33,11 @@ func newCmSketch(numCounters int64) *cmSketch {
 	return sketch
 }
 
+// Increment 增加hash值(由key决定)的频率
 func (s *cmSketch) Increment(hashed uint64) {
 	for i := range s.rows {
-		s.rows[i].increment((hashed ^ s.seed[i]) & s.mask)
+		// mask: uint64(numCounters - 1)
+		s.rows[i].increment((hashed ^ s.seed[i]) & s.mask)  // hash & s.mask保证了传入的n一定小于等于rows分配到的numCounter数.
 	}
 }
 
@@ -65,6 +67,14 @@ func (s *cmSketch) Clear() {
 	}
 }
 
+// next2Power 快速计算最接近x的二次幂的算法
+//比如x=5，返回8
+//x = 110，返回128
+
+//2^n
+//1000000 (n个0）
+//01111111（n个1） + 1
+// x = 1001010 = 1111111 + 1 =10000000
 func next2Power(x int64) int64 {
 	x--
 	x |= x >> 1
@@ -79,6 +89,8 @@ func next2Power(x int64) int64 {
 
 type cmRow []byte
 
+// newCmRow 创建能存放32个counter的bitmap
+// 1 byte = 2 counter. 因此只需要[numCounters/2]byte就行了
 func newCmRow(numCounters int64) cmRow {
 	return make(cmRow, numCounters/2)
 }
@@ -87,18 +99,26 @@ func (r cmRow) get(n uint64) byte {
 	return r[n/2] >> ((n & 1) * 4) & 0x0f
 }
 
+// increment 根据hash值增加对应的counter
+// n: 是key的hash值, 需要外部保证传入的n一定小于等于cmRow分配到的numCounter数.
+// 0000,0000 | 0000,0000 | 0000,0000 make(byte[], 3) = 6counter
 func (r cmRow) increment(n uint64) {
+	// 定位到第i个byte
 	i := n / 2
+	// 右移距离, n=偶数时为s0, 奇数为s=4
 	s := (n & 1) * 4
+	// 取前4个bit还是后4个bit
 	v := (r[i] >> s) & 0x0f
+	// 未超出最大计数时, 计数+1
 	if v < 15 {
 		r[i] += 1 << s
 	}
 }
 
+// reset 减半(保鲜), 特别巧妙的方法, 体会一下
 func (r cmRow) reset() {
 	for i := range r {
-		r[i] = (r[i] >> 1) & 0x77
+		r[i] = (r[i] >> 1) & 0x77  // 0111 0111
 	}
 }
 
