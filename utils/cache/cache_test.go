@@ -12,6 +12,8 @@ func TestCacheBasicCRUD(t *testing.T) {
 		key := fmt.Sprintf("key%d", i)
 		val := fmt.Sprintf("val%d", i)
 		cache.Set(key, val)
+		v, _ := cache.Get(key)
+		assert.Equal(t, val, v)
 	}
 
 	for i := 0; i < 1000; i++ {
@@ -19,6 +21,7 @@ func TestCacheBasicCRUD(t *testing.T) {
 		val := fmt.Sprintf("val%d", i)
 		res, ok := cache.Get(key)
 		if ok {
+			fmt.Println(res)
 			assert.Equal(t, val, res)
 			continue
 		}
