@@ -12,6 +12,8 @@ func TestCacheBasicCRUD(t *testing.T) {
 		key := fmt.Sprintf("key%d", i)
 		val := fmt.Sprintf("val%d", i)
 		cache.Set(key, val)
+		v, _ := cache.Get(key)
+		assert.Equal(t, val, v)
 	}
 
 	for i := 0; i < 1000; i++ {
@@ -19,6 +21,7 @@ func TestCacheBasicCRUD(t *testing.T) {
 		val := fmt.Sprintf("val%d", i)
 		res, ok := cache.Get(key)
 		if ok {
+			fmt.Println(res)
 			assert.Equal(t, val, res)
 			continue
 		}
@@ -26,3 +29,20 @@ func TestCacheBasicCRUD(t *testing.T) {
 
 	}
 }
+
+
+func TestCacheSameKey(t *testing.T) {
+	cache := NewCache(500)
+	key := "one"
+	for i := 0; i < 10; i++ {
+		val := fmt.Sprintf("val%d", i)
+		cache.Set(key, val)
+		res, ok := cache.Get(key)
+		if ok {
+			assert.Equal(t, val, res)
+			continue
+		}
+		assert.Equal(t, res, nil)
+	}
+}
+
