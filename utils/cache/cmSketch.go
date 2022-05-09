@@ -37,7 +37,7 @@ func newCmSketch(numCounters int64) *cmSketch {
 func (s *cmSketch) Increment(hashed uint64) {
 	for i := range s.rows {
 		// mask: uint64(numCounters - 1)
-		s.rows[i].increment((hashed ^ s.seed[i]) & s.mask)  // hash & s.mask保证了传入的n一定小于等于rows分配到的numCounter数.
+		s.rows[i].increment((hashed ^ s.seed[i]) & s.mask)  // hash & s.mask = hash % (numCounters - 1)
 	}
 }
 
@@ -105,7 +105,7 @@ func (r cmRow) get(n uint64) byte {
 func (r cmRow) increment(n uint64) {
 	// 定位到第i个byte
 	i := n / 2
-	// 右移距离, n=偶数时为s0, 奇数为s=4
+	// 右移距离, n=偶数时s=0, 奇数时s=4
 	s := (n & 1) * 4
 	// 取前4个bit还是后4个bit
 	v := (r[i] >> s) & 0x0f
