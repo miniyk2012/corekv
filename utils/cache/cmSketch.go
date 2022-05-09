@@ -12,8 +12,8 @@ const (
 
 type cmSketch struct {
 	rows [cmDepth]cmRow
-	seed [cmDepth]uint64
-	mask uint64
+	seed [cmDepth]uint64  // cmDepth个hash函数
+	mask uint64  // 对hash取余的功能. 2的次幂下按位与（&）代替取余（%）运算. hash%numCounters=hash&(numCounters-1)
 }
 
 func newCmSketch(numCounters int64) *cmSketch {
