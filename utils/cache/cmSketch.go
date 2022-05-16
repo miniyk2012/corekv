@@ -88,9 +88,13 @@ func (r cmRow) get(n uint64) byte {
 }
 
 func (r cmRow) increment(n uint64) {
+	// 定位到第i个byte
 	i := n / 2
+	// 右移距离, 偶数为0, 计数为4
 	s := (n & 1) * 4
-	v := (r[i] >> s) & 0x0f
+	// 取前4Bit还是后4Bit
+	v := (r[i] >> s) & 0x0f // 0000, 1111
+	// 未超出最大计数时, 计数+1
 	if v < 15 {
 		r[i] += 1 << s
 	}
