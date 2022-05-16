@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestBasic(t *testing.T) {
+func TestBasicEstimate(t *testing.T) {
 	cache := NewCache(5)
 	s := newCmSketch(cmDepth, 7000)
 	keyHash, _ := cache.keyToHash(5)
@@ -18,6 +18,22 @@ func TestBasic(t *testing.T) {
 	keyHash, _ = cache.keyToHash(105)
 	vv = s.Estimate(keyHash)
 	assert.Equal(t, vv, int64(0))
+}
+
+func TestReset(t *testing.T) {
+	cache := NewCache(5)
+	s := newCmSketch(cmDepth, 7000)
+	times := 10
+	keyHash, _ := cache.keyToHash(3093)
+	for i:=0; i<times; i++ {
+		s.Increment(keyHash)
+	}
+	vv := s.Estimate(keyHash)
+	assert.Equal(t, vv, int64(times))
+
+	s.Reset()
+	vv = s.Estimate(keyHash)
+	assert.Equal(t, vv, int64(times/2))
 }
 
 // based on https://github.com/jehiah/countmin/blob/master/sketch_test.go
