@@ -48,7 +48,7 @@ func NewCache(size int) *Cache {
 		lru:  newWindowLRU(lruSz, data),
 		slru: newSLRU(data, slruO, slruSz-slruO),
 		door: newFilter(size, 0.01),
-		c:    newCmSketch(int64(size)),
+		c:    newCmSketch(cmDepth, int64(size)),
 		data: data,
 	}
 

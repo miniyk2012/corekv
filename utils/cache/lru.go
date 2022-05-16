@@ -25,6 +25,7 @@ func newWindowLRU(size int, data map[uint64]*list.Element) *windowLRU {
 
 func (lru *windowLRU) add(newitem storeItem) (eitem storeItem, evicted bool) {
 	//implement me here!!!
+	return  storeItem{}, false
 }
 
 func (lru *windowLRU) get(v *list.Element) {
