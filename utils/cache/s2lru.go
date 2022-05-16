@@ -4,8 +4,8 @@ import "container/list"
 
 type segmentedLRU struct {
 	data                     map[uint64]*list.Element
-	stageOneCap, stageTwoCap int
-	stageOne, stageTwo       *list.List
+	stageOneCap, stageTwoCap int  // 2个区各自的容量
+	stageOne, stageTwo       *list.List  // One是Probation区, Two是Protected区
 }
 
 const (
@@ -30,7 +30,7 @@ func (slru *segmentedLRU) add(newitem storeItem) {
 		slru.data[newitem.key] = slru.stageOne.PushFront(&newitem)
 		return
 	}
-
+	// Probation区满, 则淘汰末尾的
 	e := slru.stageOne.Back()
 	item := e.Value.(*storeItem)
 
@@ -50,6 +50,7 @@ func (slru *segmentedLRU) get(v *list.Element) {
 		return
 	}
 
+	// 说明该数据在Probation区, 需要晋升到Protected区
 	if slru.stageTwo.Len() < slru.stageTwoCap {
 		slru.stageOne.Remove(v)
 		item.stage = STAGE_TWO

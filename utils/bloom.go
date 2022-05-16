@@ -29,7 +29,7 @@ func (f Filter) MayContainKey(k []byte) bool {
 func (f Filter) MayContain(h uint32) bool {
 	//Implement me here!!!
 	//在这里实现判断一个数据是否在bloom过滤器中
-	//思路大概是经过K个Hash函数计算，判读对应位置是否被标记为1
+	//思路是K个Hash函数计算，对应位置全1返回true, 有0就返回false
 	if len(f) < 2 {
 		return false
 	}
@@ -56,6 +56,8 @@ func (f Filter) MayContain(h uint32) bool {
 //
 // A good bitsPerKey value is 10, which yields a filter with ~ 1% false
 // positive rate.
+//  bloom过滤器提供的接口只有一次性初始化所有key的接口, 未提供每次往里面加一个key的方法
+// 因为每次sstable的dump是一整个文件一次性dump, 因此key一次性放到一个bloom过滤器里就行了
 func NewFilter(keys []uint32, bitsPerKey int) Filter {
 	return Filter(appendFilter(keys, bitsPerKey))
 }
@@ -96,10 +98,10 @@ func appendFilter(keys []uint32, bitsPerKey int) []byte {
 		for j := uint32(0); j < k; j++ {
 			bitPosition := h % uint32(nBits)
 			filter[bitPosition/8] |= 1 << (bitPosition % 8)
-			h += delta
+			h += delta  // k个hash值
 		}
 	}
-	filter[nBytes] = uint8(k)
+	filter[nBytes] = uint8(k)  // 最后一位存储k
 	return filter
 }
 

@@ -209,6 +209,7 @@ func (n *node) getNextOffset(h int) uint32 {
 	return atomic.LoadUint32(&n.tower[h])
 }
 
+// casNextOffset CAS更新n的第i层的后继, 若失败返回false, 否则返回true.
 func (n *node) casNextOffset(h int, old, val uint32) bool {
 	return atomic.CompareAndSwapUint32(&n.tower[h], old, val)
 }
@@ -290,7 +291,7 @@ func (s *Skiplist) findNear(key []byte, less bool, allowEqual bool) (*node, bool
 			}
 			// We want <. If not base level, we should go closer in the next level.
 			// 根据这个: x.key < key == next.key
-			// 额, 不允许本层拿相等的,因为下一层可能还有更小的
+			// 不能返回本层的x, 因为下一层可能还有更接近的
 			if level > 0 {
 				level--
 				continue
@@ -319,7 +320,7 @@ func (s *Skiplist) findNear(key []byte, less bool, allowEqual bool) (*node, bool
 }
 
 // findSpliceForLevel returns (outBefore, outAfter) with outBefore.key <= key <= outAfter.key. 找出第i层要插入的位置的前后节点.
-// The input "before" tells us where to start looking. 遍历该层的起始节点
+// The input "before" tells us where to start looking. 从起始节点开始遍历
 // If we found a node with the same key, then we return outBefore = outAfter.
 // Otherwise, outBefore.key < key < outAfter.key.
 func (s *Skiplist) findSpliceForLevel(key []byte, before uint32, level int) (uint32, uint32) {
@@ -369,7 +370,7 @@ func (s *Skiplist) Add(e *Entry) {
 		prev[i], next[i] = s.findSpliceForLevel(key, prev[i+1], i)  // 刚开始进入下一层时,prev[i+1]就是前一个节点. 找出第i层要插入的位置的前后节点.
 		// 要插入的key在第i层的前一个节点是prev[i], 后一个节点是next[i]
 		if prev[i] == next[i] {
-			// 不怕并发更新同一个value. 因为节点关系没有断,
+			// 不怕并发更新同一个value. 因为节点关系没有断
 			vo := s.arena.putVal(v)
 			encValue := encodeValue(vo, v.EncodedSize())  // 算出新值的偏移量和长度
 			prevNode := s.arena.getNode(prev[i])
@@ -379,7 +380,7 @@ func (s *Skiplist) Add(e *Entry) {
 	}
 	// 上面是为了获得key在每层的前后节点
 
-	// We do need to create a new node.
+	// 若不是对已存在的Key更新, 那么We do need to create a new node.
 	height := s.randomHeight()
 	x := newNode(s.arena, key, v, height)
 
@@ -390,26 +391,26 @@ func (s *Skiplist) Add(e *Entry) {
 			// Successfully increased skiplist.height.
 			break
 		}
-		listHeight = s.getHeight()  // 更新old值(因为其他并发请求更新导致listHeight发生变化)
+		listHeight = s.getHeight()  // 重新获取listHeight值(因为其他并发请求更新导致listHeight发生变化)
 	}
 
 	// We always insert from the base level and up. After you add a node in base level, we cannot
 	// create a node in the level above because it would have discovered the node in the base level.
-	// 保证从0层开始插入node, 上面这句话意思是如果同时插入同一个key的话, 会在底层时就发现对方.
+	// 保证从0层开始插入node, 上面这句话意思是如果多个协程同时插入同一个key的话, 会在底层时就发现对方.
 	for i := 0; i < height; i++ {
-		for {  // 这里的for是为了CAS更新该层
+		for {  // 这里的for是无限循环, 直到CAS更新该层成功
 			if s.arena.getNode(prev[i]) == nil { // 这里是跳表层数增长时才有的逻辑. 如果原来只有2层, 突然增加到10层, 那么pre[3~10]都是nil
 				// 这里也不用考虑并发, 因为节点前后关系在这里并不会修改
-				AssertTrue(i > 1) // This cannot happen in base level. 第0层的前一个节点肯定不为nil, L364:prev[listHeight] = s.headOffset决定的
+				AssertTrue(i > 1) // This cannot happen in base level. 第0层的前一个节点是pre[1], 肯定不为nil. L364:prev[listHeight] = s.headOffset决定的
 				// We haven't computed prev, next for this level because height exceeds old listHeight.
 				// For these levels, we expect the lists to be sparse, so we can just search from head.
-				// 如果并发请求导致在这些新的层有了一些节点, 肯定是稀疏的, 在其中找到前后节点; 当然也可能没并发请求, 这些层都是空的. findSpliceForLevel对它们处理逻辑是一致的
+				// 如果并发请求导致在这些新的层有了一些节点, 肯定是稀疏的(因此从head开始找也不会慢), 在其中找到前后节点; 当然也可能没并发请求, 这些层都是空的. findSpliceForLevel对它们处理逻辑是一致的
 				prev[i], next[i] = s.findSpliceForLevel(key, s.headOffset, i)
 				// Someone adds the exact same key before we are able to do so. This can only happen on
-				// the base level. But we know we are not on the base level.
+				// the base level. But we know we are not on the base level. 见L424的解释
 				AssertTrue(prev[i] != next[i])
 			}
-			x.tower[i] = next[i]  // 新节点的后继不会并发
+			x.tower[i] = next[i]  // 新节点连后继不会有并发问题
 			pnode := s.arena.getNode(prev[i])
 			if pnode.casNextOffset(i, next[i], s.arena.getNodeOffset(x)) {  // 前驱更新要并发
 				// Managed to insert x between prev[i] and next[i]. Go to the next level.
@@ -418,7 +419,7 @@ func (s *Skiplist) Add(e *Entry) {
 			// CAS failed. We need to recompute prev and next.  这是CAS失败的弥补逻辑, 重新找一下key的前驱和后继
 			// It is unlikely to be helpful to try to use a different level as we redo the search,
 			// because it is unlikely that lots of nodes are inserted between prev[i] and next[i].
-			prev[i], next[i] = s.findSpliceForLevel(key, prev[i], i)
+			prev[i], next[i] = s.findSpliceForLevel(key, prev[i], i)  // 重新获取next[i]
 			if prev[i] == next[i] {
 				// 因为所有并发请求都从i是从0开始往上逐层插入的.
 				// 如果有2个协程A,B它们有相同的key并发插入.
@@ -442,7 +443,7 @@ func (s *Skiplist) Empty() bool {
 
 // findLast returns the last element. If head (empty list), we return nil. All the find functions
 // will NEVER return the head nodes.
-func (s *Skiplist) findLast() *node {
+func (s *Skiplist) findLast() *node {  // 从最高层往后找速度快(logn);  而从第0层逐个找虽然也行, 但速度慢(n)
 	n := s.getHead()
 	level := int(s.getHeight()) - 1
 	for {

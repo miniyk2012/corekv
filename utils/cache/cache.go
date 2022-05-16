@@ -107,8 +107,8 @@ func (c *Cache) Get(key interface{}) (interface{}, bool) {
 func (c *Cache) get(key interface{}) (interface{}, bool) {
 	c.t++
 	if c.t == c.threshold {
-		c.c.Reset()
-		c.door.reset()
+		c.c.Reset()		// cmSketch保鲜
+		c.door.reset()  // bloom过滤器清空
 		c.t = 0
 	}
 
@@ -131,6 +131,7 @@ func (c *Cache) get(key interface{}) (interface{}, bool) {
 
 	v := item.value
 
+	// 在lru里把元素提前一下
 	if item.stage == 0 {
 		c.lru.get(val)
 	} else {

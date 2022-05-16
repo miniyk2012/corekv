@@ -52,6 +52,8 @@ func (vs *ValueStruct) EncodeValue(b []byte) uint32 {
 	return uint32(1 + sz + n)
 }
 
+// sizeVarint EncodeValue方法中的PutUvarint就是用varint编码来存储数据的, 因此这里计算了varint编码所占的内存大小, 以保证2者一致.
+// varint简单来说就是每7位存一字节, 头上补个1, 好处是如果x是很小的数, 高位都是0, 那么只需存低位的值, 1字节就够了, 相比uint64原来是8字节的, 大大缩减了存储空间
 func sizeVarint(x uint64) (n int) {
 	for {
 		n++
