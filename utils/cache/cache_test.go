@@ -22,7 +22,7 @@ func TestCacheBasicCRUD(t *testing.T) {
 		val := fmt.Sprintf("val%d", i)
 		res, ok := cache.Get(key)
 		if ok {
-			fmt.Println(res)
+			// fmt.Println(res)
 			assert.Equal(t, val, res)
 			continue
 		}
