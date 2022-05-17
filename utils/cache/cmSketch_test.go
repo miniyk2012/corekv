@@ -36,6 +36,22 @@ func TestReset(t *testing.T) {
 	assert.Equal(t, vv, int64(times/2))
 }
 
+func TestClear(t *testing.T) {
+	cache := NewCache(5)
+	s := newCmSketch(cmDepth, 7000)
+	times := 10
+	keyHash, _ := cache.keyToHash(3093)
+	for i:=0; i<times; i++ {
+		s.Increment(keyHash)
+	}
+	vv := s.Estimate(keyHash)
+	assert.Equal(t, vv, int64(times))
+
+	s.Clear()
+	vv = s.Estimate(keyHash)
+	assert.Equal(t, vv, int64(0))
+}
+
 // based on https://github.com/jehiah/countmin/blob/master/sketch_test.go
 func TestAccuracy(t *testing.T) {
 	log.SetOutput(os.Stdout)
