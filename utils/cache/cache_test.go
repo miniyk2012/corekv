@@ -67,7 +67,7 @@ func (t *tinyLFUTest) assertEntry(en *storeItem, key uint64, v string, stage int
 	av := en.value.(string)
 	if ak != key || av != v || en.stage != stage {
 		t.t.Helper()
-		t.t.Fatalf("unexpected entry: %+v, want: {key: %d, value: %s, listID: %d}",
+		t.t.Fatalf("unexpected entry: %+v, want: {key: %d, value: %s, stage: %d}",
 			en, key, v, stage)
 	}
 }
@@ -159,6 +159,37 @@ func TestTinyLFU(t *testing.T) {
 	if n != 3 {
 		t.Fatalf("unexpected estimate: %d %+v", n, en[2])
 	}
+
+	if _, ok := s.c.Del(en[0].key); ok {
+		t.Fatalf("delete non-exist ele!")
+	}
+	fmt.Println(s.c)
+	// 6 5 | 2 1 | 4
+
+	remEn, ok := s.c.Del(en[2].key)
+	// 6 5 | 1 | 4
+	if !ok {
+		t.Fatalf("delete key fail %d", en[2].key)
+	}
+	fmt.Println(s.c)
+	s.assertEntry(&remEn, 2, "2", 2)
+
+	remEn, ok = s.c.Del(en[6].key)
+	// 5 | 1 | 4
+	if !ok {
+		t.Fatalf("delete key fail %d", en[6].key)
+	}
+	fmt.Println(s.c)
+	s.assertEntry(&remEn, 6, "6", 0)
+
+
+	remEn, ok = s.c.Del(en[4].key)
+	// 5 | 1 | -
+	if !ok {
+		t.Fatalf("delete key fail %d", en[4].key)
+	}
+	fmt.Println(s.c)
+	s.assertEntry(&remEn, 4, "4", 1)
 }
 
 func TestCacheSameKey(t *testing.T) {
