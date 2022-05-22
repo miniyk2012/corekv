@@ -8,6 +8,7 @@ import (
 
 func TestCacheBasicCRUD(t *testing.T) {
 	cache := NewCache(5)
+	fmt.Println(cache.lru.cap, cache.slru.stageTwoCap, cache.slru.stageOneCap)
 	for i := 0; i < 10; i++ {
 		key := fmt.Sprintf("key%d", i)
 		val := fmt.Sprintf("val%d", i)
@@ -15,7 +16,6 @@ func TestCacheBasicCRUD(t *testing.T) {
 		fmt.Printf("set %s: %s\n", key ,cache)
 	}
 
-	//res, ok := cache.Get(key)
 	for i := 0; i < 1000; i++ {
 		key := fmt.Sprintf("key%d", i)
 		val := fmt.Sprintf("val%d", i)
@@ -24,7 +24,6 @@ func TestCacheBasicCRUD(t *testing.T) {
 			fmt.Printf("get %s: %s\n", key, cache)
 			assert.Equal(t, val, res)
 			assert.Less(t, i, 10)
-			//fmt.Printf("%d=%v ", i, res)
 			continue
 		}
 		assert.Equal(t, res, nil)
