@@ -31,6 +31,17 @@ func TestCacheBasicCRUD(t *testing.T) {
 	fmt.Printf("at last: %s\n", cache)
 }
 
+func TestCacheStruct(t *testing.T) {
+	cache := NewCache(500)
+	type  value struct{
+		name string
+	}
+	cache.Set("no1", value{"yangkai.04"})
+	v, ok := cache.Get("no1")
+	assert.True(t, ok, nil)
+	assert.Equal(t, v, value{"yangkai.04"})
+}
+
 
 type tinyLFUTest struct {
 	c   *Cache
