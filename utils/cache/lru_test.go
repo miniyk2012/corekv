@@ -201,6 +201,9 @@ func TestSegmentedLRU(t *testing.T) {
 	///**
 	remEn, evicted = s.slru.add(en[3])
 	// 0 1 | 3
+	if !evicted {
+		t.Fatalf("should remove one item")
+	}
 	s.assertSLRULen(2, 1)
 	s.assertEntry(&remEn, 2, "2", STAGE_ONE)
 	s.assertSLRUEntry(3, STAGE_ONE)
@@ -214,4 +217,72 @@ func TestSegmentedLRU(t *testing.T) {
 	// 3 0 | 4
 	s.assertSLRULen(2, 1)
 	s.assertEntry(&remEn, 1, "1", STAGE_ONE)
+}
+
+func TestSegmentedLR2(t *testing.T) {
+	s := lruTest{t: t}
+	s.init(0, WithSLruCap(2, 2))
+
+	en := createLRUEntries(s, 5)
+
+	remEn, evicted := s.slru.add(en[0])
+	// - | 0
+	if evicted {
+		t.Fatalf("unexpected entry removed: %v", remEn)
+	}
+	s.assertSLRULen(0, 1)
+	s.assertSLRUEntry(0, STAGE_ONE)
+
+	remEn, evicted = s.slru.add(en[1])
+	// - | 1 0
+	if evicted {
+		t.Fatalf("unexpected entry removed: %v", remEn)
+	}
+
+	s.assertSLRULen(0, 2)
+	s.assertSLRUEntry(1, STAGE_ONE)
+
+	remEn, evicted = s.slru.add(en[2])
+	// - | 2 1 0
+	if evicted {
+		t.Fatalf("unexpected entry removed: %v", remEn)
+	}
+	s.assertSLRULen(0, 3)
+	s.assertSLRUEntry(2, STAGE_ONE)
+
+	remEn, evicted = s.slru.add(en[3])
+	// - | 3 2 1 0
+	if evicted {
+		t.Fatalf("unexpected entry removed: %v", remEn)
+	}
+	s.assertSLRULen(0, 4)
+	s.assertSLRUEntry(3, STAGE_ONE)
+
+	remEn, evicted = s.slru.add(en[4])
+	//  | 4 3 2 1
+	if !evicted {
+		t.Fatalf("should remove one item")
+	}
+	s.assertSLRULen(0, 4)
+	s.assertSLRUEntry(4, STAGE_ONE)
+	s.assertEntry(&remEn, 0, "0", STAGE_ONE)
+
+	s.slru.get(s.data[2])
+	s.slru.get(s.data[3])
+	// 3 2  | 4 1
+	s.assertSLRULen(2, 2)
+	s.assertSLRUEntry(4, STAGE_ONE)
+	s.assertSLRUEntry(3, STAGE_TWO)
+	s.assertSLRUEntry(2, STAGE_TWO)
+	s.assertSLRUEntry(1, STAGE_ONE)
+
+	s.slru.get(s.data[1])
+	// 1 3  | 2 4
+	s.assertSLRULen(2, 2)
+	s.assertSLRUEntry(4, STAGE_ONE)
+	s.assertSLRUEntry(3, STAGE_TWO)
+	s.assertSLRUEntry(2, STAGE_ONE)
+	s.assertSLRUEntry(1, STAGE_TWO)
+	s.assertEntry(s.slru.stageTwo.Front().Value.(*storeItem), 1, "1", STAGE_TWO)
+	s.assertEntry(s.slru.stageOne.Front().Value.(*storeItem), 2, "2", STAGE_ONE)
 }

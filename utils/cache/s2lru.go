@@ -26,7 +26,8 @@ func newSLRU(data map[uint64]*list.Element, stageOneCap, stageTwoCap int) *segme
 // add window-lru淘汰下来的数据获胜, 加入slru, 这里假设一定是新值, 故只能加入到stageOne
 func (slru *segmentedLRU) add(newitem storeItem) (eitem storeItem, evicted bool) {
 	newitem.stage = STAGE_ONE
-	// 即使stageOne的数据超过slru.stageOneCap, 只要总量未超标也还可以加入stageOne
+	// 即使stageOne的数据超过slru.stageOneCap, 只要总量未超标也还可以加入stageOne.
+	// 见测试用例TestSegmentedLR2.
 	if slru.stageOne.Len() < slru.stageOneCap || slru.Len() < slru.stageOneCap+slru.stageTwoCap {
 		v := slru.stageOne.PushFront(&newitem)
 		slru.data[newitem.key] = v
