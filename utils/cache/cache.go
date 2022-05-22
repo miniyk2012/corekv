@@ -1,3 +1,5 @@
+// 参考https://github.dev/goburrow/cache/blob/master/lru_test.go编写测试用例
+
 package cache
 
 import (
@@ -57,7 +59,14 @@ func NewCache(size int) *Cache {
 func (c *Cache) Set(key interface{}, value interface{}) bool {
 	c.m.Lock()
 	defer c.m.Unlock()
-	return c.set(key, value)
+	if _, existed := c.get(key); !existed {
+		return c.set(key, value)
+	}
+	keyHash, _ := c.keyToHash(key)
+	val, _ := c.data[keyHash]
+	item := val.Value.(*storeItem)
+	item.value = value
+	return true
 }
 
 func (c *Cache) set(key, value interface{}) bool {
