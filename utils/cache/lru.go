@@ -52,3 +52,11 @@ func (lru *windowLRU) get(v *list.Element) {
 	//implement me here!!!
 	lru.list.MoveToFront(v)
 }
+
+// remove an item from the lru
+func (lru *windowLRU) remove(key uint64) *storeItem {
+	val := lru.data[key]
+	lru.list.Remove(val)
+	delete(lru.data, key)
+	return val.Value.(*storeItem)
+}

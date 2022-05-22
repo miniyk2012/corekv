@@ -79,3 +79,15 @@ func (slru *segmentedLRU) victim() *storeItem {
 	v := slru.stageOne.Back()
 	return v.Value.(*storeItem)
 }
+
+// remove an item from the slru
+func (slru *segmentedLRU) remove(key uint64) *storeItem {
+	val := slru.data[key]
+	if val.Value.(*storeItem).stage == STAGE_ONE {
+		slru.stageOne.Remove(val)
+	} else {
+		slru.stageTwo.Remove(val)
+	}
+	delete(slru.data, key)
+	return val.Value.(*storeItem)
+}

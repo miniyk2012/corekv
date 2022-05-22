@@ -56,20 +56,26 @@ func NewCache(size int) *Cache {
 
 }
 
-func (c *Cache) Set(key interface{}, value interface{}) bool {
+func (c *Cache) Len() int { return len(c.data) }
+
+// Set 设置缓存, evicted表示是否有缓存被淘汰
+func (c *Cache) Set(key interface{}, value interface{}) (evicted bool) {
 	c.m.Lock()
 	defer c.m.Unlock()
 	if _, existed := c.get(key); !existed {
-		return c.set(key, value)
+		_, evicted = c.set(key, value)
+		return evicted
 	}
+	// 若key已存在, 只需更新value
 	keyHash, _ := c.keyToHash(key)
 	val, _ := c.data[keyHash]
 	item := val.Value.(*storeItem)
 	item.value = value
-	return true
+	return false
 }
 
-func (c *Cache) set(key, value interface{}) bool {
+// set 设置缓存, evicted表示是否有缓存被淘汰, 若为true, 则storeItem是被淘汰的数据
+func (c *Cache) set(key, value interface{}) (eitem storeItem, evicted bool) {
 	keyHash, conflictHash := c.keyToHash(key)
 
 	i := storeItem{
@@ -79,41 +85,40 @@ func (c *Cache) set(key, value interface{}) bool {
 		value:    value,
 	}
 
-	eitem, evicted := c.lru.add(i)
+	eitem, evicted = c.lru.add(i)
 
 	if !evicted {
-		return true
+		return storeItem{}, false
 	}
 
 	victim := c.slru.victim()
 
 	if victim == nil {
-		c.slru.add(eitem)
-		return true
+		return c.slru.add(eitem)
 	}
 
 	if !c.door.Allow(uint32(keyHash)) {
-		return true
+		return storeItem{}, false
 	}
 
 	vcount := c.c.Estimate(victim.key)
 	ocount := c.c.Estimate(eitem.key)
 
 	if ocount < vcount {
-		return true
+		return storeItem{}, false
 	}
 
-	c.slru.add(eitem)
-	return true
+	return c.slru.add(eitem)
 }
 
 func (c *Cache) Get(key interface{}) (interface{}, bool) {
 	c.m.RLock()
 	defer c.m.RUnlock()
-	return c.get(key)
+	item, ok := c.get(key)
+	return item.value, ok
 }
 
-func (c *Cache) get(key interface{}) (interface{}, bool) {
+func (c *Cache) get(key interface{}) (*storeItem, bool) {
 	c.t++
 	if c.t == c.threshold {
 		c.c.Reset()
@@ -138,40 +143,40 @@ func (c *Cache) get(key interface{}) (interface{}, bool) {
 
 	c.c.Increment(item.key)
 
-	v := item.value
-
 	if item.stage == 0 {
 		c.lru.get(val)
 	} else {
 		c.slru.get(val)
 	}
 
-	return v, true
+	return item, true
 
 }
 
-func (c *Cache) Del(key interface{}) (interface{}, bool) {
+func (c *Cache) Del(key interface{}) (storeItem, bool) {
 	c.m.Lock()
 	defer c.m.Unlock()
 	return c.del(key)
 }
 
-func (c *Cache) del(key interface{}) (interface{}, bool) {
+func (c *Cache) del(key interface{}) (storeItem, bool) {
 	keyHash, conflictHash := c.keyToHash(key)
 
 	val, ok := c.data[keyHash]
 	if !ok {
-		return 0, false
+		return storeItem{}, false
 	}
 
 	item := val.Value.(*storeItem)
 
 	if conflictHash != 0 && (conflictHash != item.conflict) {
-		return 0, false
+		return storeItem{}, false
 	}
-
-	delete(c.data, keyHash)
-	return item.conflict, true
+	if item.stage == 0 {
+		return *c.lru.remove(keyHash), true
+	} else {
+		return *c.slru.remove(keyHash), true
+	}
 }
 
 func (c *Cache) keyToHash(key interface{}) (uint64, uint64) {

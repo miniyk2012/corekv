@@ -154,6 +154,13 @@ func TestLRU(t *testing.T) {
 	s.assertLRUEntry(3)
 	s.assertLRUEntry(2)
 	s.assertLRUEntry(0)
+
+	remEn = *s.lru.remove(en[2].key)
+	// 3 0
+	s.assertEntry(&remEn, 2, "2", 0)
+	s.assertLRULen(2)
+	s.assertLRUEntry(3)
+	s.assertLRUEntry(0)
 }
 
 func TestSegmentedLRU(t *testing.T) {
@@ -217,6 +224,13 @@ func TestSegmentedLRU(t *testing.T) {
 	// 3 0 | 4
 	s.assertSLRULen(2, 1)
 	s.assertEntry(&remEn, 1, "1", STAGE_ONE)
+
+	remEn = *s.slru.remove(en[0].key)
+	// 3 | 4
+	s.assertEntry(&remEn, 0, "0", STAGE_TWO)
+	s.assertSLRULen(1, 1)
+	s.assertSLRUEntry(3, STAGE_TWO)
+	s.assertSLRUEntry(4, STAGE_ONE)
 }
 
 func TestSegmentedLR2(t *testing.T) {
