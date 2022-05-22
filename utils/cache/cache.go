@@ -115,10 +115,11 @@ func (c *Cache) Get(key interface{}) (interface{}, bool) {
 	c.m.RLock()
 	defer c.m.RUnlock()
 	item, ok := c.get(key)
+
 	return item.value, ok
 }
 
-func (c *Cache) get(key interface{}) (*storeItem, bool) {
+func (c *Cache) get(key interface{}) (storeItem, bool) {
 	c.t++
 	if c.t == c.threshold {
 		c.c.Reset()
@@ -131,18 +132,17 @@ func (c *Cache) get(key interface{}) (*storeItem, bool) {
 	val, ok := c.data[keyHash]
 	if !ok {
 		c.c.Increment(keyHash)
-		return nil, false
+		return storeItem{}, false
 	}
 
-	item := val.Value.(*storeItem)
+	item := *val.Value.(*storeItem)
 
 	if item.conflict != conflictHash {
 		c.c.Increment(keyHash)
-		return nil, false
+		return storeItem{}, false
 	}
 
 	c.c.Increment(item.key)
-
 	if item.stage == 0 {
 		c.lru.get(val)
 	} else {
@@ -208,6 +208,12 @@ func (c *Cache) keyToHash(key interface{}) (uint64, uint64) {
 type stringStruct struct {
 	str unsafe.Pointer
 	len int
+}
+
+func (c *Cache)String() string {
+	var s string
+	s += c.lru.String() + " | " + c.slru.String()
+	return s
 }
 
 //go:noescape

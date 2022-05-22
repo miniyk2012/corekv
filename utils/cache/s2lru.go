@@ -1,6 +1,9 @@
 package cache
 
-import "container/list"
+import (
+	"container/list"
+	"fmt"
+)
 
 type segmentedLRU struct {
 	data                     map[uint64]*list.Element
@@ -9,7 +12,7 @@ type segmentedLRU struct {
 }
 
 const (
-	STAGE_ONE = iota
+	STAGE_ONE = iota + 1
 	STAGE_TWO
 )
 
@@ -35,7 +38,7 @@ func (slru *segmentedLRU) add(newitem storeItem) (eitem storeItem, evicted bool)
 	}
 	back := slru.stageOne.Back()
 	oldItem := back.Value.(*storeItem)
-	delete(slru.data, oldItem.key)   // 记得删除淘汰的数据
+	delete(slru.data, oldItem.key) // 记得删除淘汰的数据
 	eitem, *oldItem = *oldItem, newitem
 	slru.stageOne.MoveToFront(back)
 	slru.data[newitem.key] = back
@@ -55,15 +58,15 @@ func (slru *segmentedLRU) get(v *list.Element) {
 		slru.data[item.key] = slru.stageTwo.PushFront(item)
 		return
 	}
-	item.stage = STAGE_TWO  // 升级, 并和stageTwo末尾的数据交换
+	item.stage = STAGE_TWO // 升级
 	back := slru.stageTwo.Back()
-	aItem := back.Value.(*storeItem)
-	aItem.stage = STAGE_ONE
-	*item, *aItem = *aItem, *item
+	bItem := back.Value.(*storeItem)
+	bItem.stage = STAGE_ONE
+	*item, *bItem = *bItem, *item
 	slru.stageTwo.MoveToFront(back)
 	slru.stageOne.MoveToFront(v)
-	slru.data[aItem.key] = back
-	slru.data[item.key] = v
+	slru.data[bItem.key] = back   // 新值
+	slru.data[item.key] = v // 旧值
 }
 
 func (slru *segmentedLRU) Len() int {
@@ -90,4 +93,16 @@ func (slru *segmentedLRU) remove(key uint64) *storeItem {
 	}
 	delete(slru.data, key)
 	return val.Value.(*storeItem)
+}
+
+func (slru *segmentedLRU)String() string {
+	var s string
+	for e := slru.stageTwo.Front(); e != nil; e = e.Next() {
+		s += fmt.Sprintf("%v,", e.Value.(*storeItem).value)
+	}
+	s += fmt.Sprintf(" | ")
+	for e := slru.stageOne.Front(); e != nil; e = e.Next() {
+		s += fmt.Sprintf("%v,", e.Value.(*storeItem).value)
+	}
+	return s
 }

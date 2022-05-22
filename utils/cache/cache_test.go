@@ -12,19 +12,24 @@ func TestCacheBasicCRUD(t *testing.T) {
 		key := fmt.Sprintf("key%d", i)
 		val := fmt.Sprintf("val%d", i)
 		cache.Set(key, val)
+		fmt.Printf("set %s: %s\n", key ,cache)
 	}
 
+	//res, ok := cache.Get(key)
 	for i := 0; i < 1000; i++ {
 		key := fmt.Sprintf("key%d", i)
 		val := fmt.Sprintf("val%d", i)
 		res, ok := cache.Get(key)
 		if ok {
+			fmt.Printf("get %s: %s\n", key, cache)
 			assert.Equal(t, val, res)
+			assert.Less(t, i, 10)
+			//fmt.Printf("%d=%v ", i, res)
 			continue
 		}
 		assert.Equal(t, res, nil)
-
 	}
+	fmt.Printf("at last: %s\n", cache)
 }
 
 
@@ -69,11 +74,12 @@ func (t *tinyLFUTest) assertEntry(en *storeItem, key uint64, v string, stage int
 }
 
 func (t *tinyLFUTest) assertLRUEntry(key uint64, stage int) {
-	item, ok := t.c.get(key)
+	en, ok := t.c.data[key]
 	if !ok {
 		t.t.Helper()
 		t.t.Fatalf("entry not found in cache: key=%v", key)
 	}
+	item := en.Value.(*storeItem)
 	ak := item.key
 	av := item.value.(string)
 	v := fmt.Sprintf("%d", key)
@@ -103,7 +109,7 @@ func TestTinyLFU(t *testing.T) {
 		}
 	}
 	for i := 0; i < 5; i++ {
-		if ok := s.c.Set(en[i].key, en[i].value); !ok {
+		if evicted := s.c.Set(en[i].key, en[i].value); evicted {
 			t.Fatalf("unexpected entry removed")
 		}
 	}
@@ -158,6 +164,7 @@ func TestCacheSameKey(t *testing.T) {
 		val := fmt.Sprintf("val%d", i)
 		cache.Set(key, val)
 		res, ok := cache.Get(key)
+		fmt.Println(cache)
 		if ok {
 			assert.Equal(t, val, res)
 			continue
@@ -181,11 +188,8 @@ func TestTinyLFUSameEntry(t *testing.T) {
 		if !ok{
 			s.t.Fatalf("should get item!")
 		}
-		az := s.c.lru.list.Len()
-		tz := s.c.slru.stageTwo.Len()
-		bz := s.c.slru.stageOne.Len()
-		fmt.Printf("%#v, %d, %d|%d\n", *v, az, tz, bz)
+		fmt.Println(s.c)
 		s.assertLen(1, 0, 0)
-		s.assertEntry(v, sameKey, fmt.Sprintf("%d", i), 0)
+		s.assertEntry(&v, sameKey, fmt.Sprintf("%d", i), 0)
 	}
 }
