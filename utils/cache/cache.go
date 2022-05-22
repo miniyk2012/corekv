@@ -62,12 +62,13 @@ func (c *Cache) Len() int { return len(c.data) }
 func (c *Cache) Set(key interface{}, value interface{}) (evicted bool) {
 	c.m.Lock()
 	defer c.m.Unlock()
-	if _, existed := c.get(key); !existed {
+	keyHash, _ := c.keyToHash(key)
+	if _, existed := c.data[keyHash]; !existed {
 		_, evicted = c.set(key, value)
 		return evicted
 	}
-	// 若key已存在, 只需更新value
-	keyHash, _ := c.keyToHash(key)
+	// 若key已存在, 重新调整下属性, 再更新value
+	c.get(key)
 	val, _ := c.data[keyHash]
 	item := val.Value.(*storeItem)
 	item.value = value
@@ -77,7 +78,6 @@ func (c *Cache) Set(key interface{}, value interface{}) (evicted bool) {
 // set 设置缓存, evicted表示是否有缓存被淘汰, 若为true, 则storeItem是被淘汰的数据
 func (c *Cache) set(key, value interface{}) (eitem storeItem, evicted bool) {
 	keyHash, conflictHash := c.keyToHash(key)
-
 	i := storeItem{
 		stage:    0,
 		key:      keyHash,
@@ -97,15 +97,15 @@ func (c *Cache) set(key, value interface{}) (eitem storeItem, evicted bool) {
 		return c.slru.add(eitem)
 	}
 
-	if !c.door.Allow(uint32(keyHash)) {
-		return storeItem{}, false
+	if !c.door.Allow(uint32(eitem.key)) {
+		return eitem, true
 	}
 
 	vcount := c.c.Estimate(victim.key)
 	ocount := c.c.Estimate(eitem.key)
 
 	if ocount < vcount {
-		return storeItem{}, false
+		return eitem, true
 	}
 
 	return c.slru.add(eitem)
@@ -131,6 +131,7 @@ func (c *Cache) get(key interface{}) (storeItem, bool) {
 
 	val, ok := c.data[keyHash]
 	if !ok {
+		c.door.Allow(uint32(keyHash))
 		c.c.Increment(keyHash)
 		return storeItem{}, false
 	}
@@ -138,10 +139,11 @@ func (c *Cache) get(key interface{}) (storeItem, bool) {
 	item := *val.Value.(*storeItem)
 
 	if item.conflict != conflictHash {
+		c.door.Allow(uint32(keyHash))
 		c.c.Increment(keyHash)
 		return storeItem{}, false
 	}
-
+	c.door.Allow(uint32(keyHash))
 	c.c.Increment(item.key)
 	if item.stage == 0 {
 		c.lru.get(val)

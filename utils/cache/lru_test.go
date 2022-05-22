@@ -138,6 +138,7 @@ func TestLRU(t *testing.T) {
 	// 0 1
 
 	remEn, evicted = s.lru.add(en[2])
+	fmt.Println(s.lru)
 	// 2 0 1
 	if evicted {
 		t.Fatalf("unexpected entry removed: %+v", remEn)
@@ -156,6 +157,7 @@ func TestLRU(t *testing.T) {
 	s.assertLRUEntry(0)
 
 	remEn = *s.lru.remove(en[2].key)
+	fmt.Println(s.lru)
 	// 3 0
 	s.assertEntry(&remEn, 2, "2", 0)
 	s.assertLRULen(2)
@@ -221,11 +223,13 @@ func TestSegmentedLRU(t *testing.T) {
 	s.assertSLRUEntry(3, STAGE_TWO)
 
 	remEn, evicted = s.slru.add(en[4])
+	fmt.Println(s.slru)
 	// 3 0 | 4
 	s.assertSLRULen(2, 1)
 	s.assertEntry(&remEn, 1, "1", STAGE_ONE)
 
 	remEn = *s.slru.remove(en[0].key)
+	fmt.Println(s.slru)
 	// 3 | 4
 	s.assertEntry(&remEn, 0, "0", STAGE_TWO)
 	s.assertSLRULen(1, 1)
@@ -257,6 +261,7 @@ func TestSegmentedLR2(t *testing.T) {
 	s.assertSLRUEntry(1, STAGE_ONE)
 
 	remEn, evicted = s.slru.add(en[2])
+	fmt.Println(s.slru)
 	// - | 2 1 0
 	if evicted {
 		t.Fatalf("unexpected entry removed: %v", remEn)
@@ -291,6 +296,7 @@ func TestSegmentedLR2(t *testing.T) {
 	s.assertSLRUEntry(1, STAGE_ONE)
 
 	s.slru.get(s.data[1])
+	fmt.Println(s.slru)
 	// 1 3  | 2 4
 	s.assertSLRULen(2, 2)
 	s.assertSLRUEntry(4, STAGE_ONE)

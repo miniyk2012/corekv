@@ -13,8 +13,8 @@ func TestCacheBasicCRUD(t *testing.T) {
 		key := fmt.Sprintf("key%d", i)
 		val := fmt.Sprintf("val%d", i)
 		cache.Set(key, val)
-		fmt.Printf("set %s: %s\n", key ,cache)
 	}
+	fmt.Printf("set last: %s\n", cache)
 
 	for i := 0; i < 1000; i++ {
 		key := fmt.Sprintf("key%d", i)
@@ -112,6 +112,7 @@ func TestTinyLFU(t *testing.T) {
 			t.Fatalf("unexpected entry removed")
 		}
 	}
+	fmt.Println(s.c)
 	// 4 3 | - | 2 1 0
 	s.assertLen(2, 0, 3)
 	s.assertLRUEntry(4, 0)
@@ -123,12 +124,14 @@ func TestTinyLFU(t *testing.T) {
 	s.c.Get(en[1].key)
 	s.c.Get(en[2].key)
 	// 4 3 | 2 1 | 0
+	fmt.Println(s.c)
 	s.assertLen(2, 2, 1)
 	s.assertLRUEntry(2, STAGE_TWO)
 	s.assertLRUEntry(1, STAGE_TWO)
 	s.assertLRUEntry(0, STAGE_ONE)
 
 	remEn, evicted := s.c.set(en[5].key, en[5].value)
+	fmt.Println(s.c)
 	// 5 4 | 2 1 | 0
 	if !evicted {
 		t.Fatalf("expect an entry removed when adding %+v", en[5])
@@ -137,23 +140,25 @@ func TestTinyLFU(t *testing.T) {
 
 	s.c.Get(en[4].key)
 	s.c.Get(en[5].key)
+	fmt.Println(s.c)
 	remEn, evicted = s.c.set(en[6].key, en[6].value)
+	fmt.Println(s.c)
 	// 6 5 | 2 1 | 4
 	if !evicted {
 		t.Fatalf("expect an entry removed when adding %+v", en[6])
 	}
 	s.assertLen(2, 2, 1)
 	s.assertEntry(&remEn, 0, "0", STAGE_ONE)
-	//n := s.c.c.Estimate(en[1].key)
-	//if n != 2 {
-	//	t.Fatalf("unexpected estimate: %d %+v", n, en[1])
-	//}
-	//s.lfu.access(en[2])
-	//s.lfu.access(en[2])
-	//n = s.lfu.estimate(en[2].hash)
-	//if n != 4 {
-	//	t.Fatalf("unexpected estimate: %d %+v", n, en[2])
-	//}
+	n := s.c.c.Estimate(uint64(en[1].key))
+	if n != 1 {
+		t.Fatalf("unexpected estimate: %d %+v", n, en[1])
+	}
+	s.c.get(en[1].key)
+	s.c.get(en[1].key)
+	n = s.c.c.Estimate(uint64(en[1].key))
+	if n != 3 {
+		t.Fatalf("unexpected estimate: %d %+v", n, en[2])
+	}
 }
 
 func TestCacheSameKey(t *testing.T) {
