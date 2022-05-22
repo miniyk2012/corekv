@@ -11,14 +11,27 @@ import (
 
 type lruTest struct {
 	cache Cache
-	data map[uint64]*list.Element
-	lru  *windowLRU
-	t    *testing.T
+	data  map[uint64]*list.Element
+	lru   *windowLRU
+	slru  *segmentedLRU
+	t     *testing.T
 }
 
-func (s *lruTest)init(size int) {
+var (
+	WithSLruCap = func(stageOneCap, stageTwoCap int) func(*segmentedLRU) {
+		return func(slru *segmentedLRU) {
+			slru.stageOneCap, slru.stageTwoCap = stageOneCap, stageTwoCap
+		}
+	}
+)
+
+func (s *lruTest) init(lruCap int, opts ...func(*segmentedLRU)) {
 	s.data = make(map[uint64]*list.Element)
-	s.lru = newWindowLRU(size, s.data)
+	s.lru = newWindowLRU(lruCap, s.data)
+	s.slru = newSLRU(s.data, 0, 0)
+	for _, opt := range opts {
+		opt(s.slru)
+	}
 }
 
 func (s *lruTest) assertLRULen(n int) {
@@ -27,6 +40,15 @@ func (s *lruTest) assertLRULen(n int) {
 	if sz != n || lz != n {
 		s.t.Helper()
 		s.t.Fatalf("unexpected data length: cache=%d list=%d, want: %d", sz, lz, n)
+	}
+}
+
+func (s *lruTest) assertSLRULen(protected, probation int) {
+	tz := s.slru.stageTwo.Len()
+	bz := s.slru.stageOne.Len()
+	if tz != protected || bz != probation {
+		s.t.Helper()
+		s.t.Fatalf("unexpected data length: protected=%d probation=%d, want: %d %d", tz, bz, protected, probation)
 	}
 }
 
@@ -61,6 +83,22 @@ func (s *lruTest) assertLRUEntry(key uint64) {
 	}
 }
 
+func (s *lruTest) assertSLRUEntry(key uint64, stage int) {
+	en := s.data[key]
+	if en == nil {
+		s.t.Helper()
+		s.t.Fatalf("entry not found in cache: key=%v", key)
+	}
+	item := en.Value.(*storeItem)
+	ak := item.key
+	av := item.value
+	v := fmt.Sprintf("%d", key)
+	if ak != key || av != v || item.stage != stage {
+		s.t.Helper()
+		s.t.Fatalf("unexpected entry: %+v, want: {key: %v, value: %v, stage: %v}", en, key, v, stage)
+	}
+}
+
 func createLRUEntries(s lruTest, n int) []storeItem {
 	en := make([]storeItem, n)
 	for i := range en {
@@ -87,7 +125,7 @@ func TestLRU(t *testing.T) {
 	s.assertLRULen(1)
 	s.assertLRUEntry(0)
 
-	remEn, evicted  = s.lru.add(en[1])
+	remEn, evicted = s.lru.add(en[1])
 	// 1 0
 	if evicted {
 		t.Fatalf("unexpected entry removed: %v", remEn)
@@ -95,7 +133,6 @@ func TestLRU(t *testing.T) {
 	s.assertLRULen(2)
 	s.assertLRUEntry(1)
 	s.assertLRUEntry(0)
-
 
 	s.lru.get(s.data[0])
 	// 0 1
@@ -117,4 +154,64 @@ func TestLRU(t *testing.T) {
 	s.assertLRUEntry(3)
 	s.assertLRUEntry(2)
 	s.assertLRUEntry(0)
+}
+
+func TestSegmentedLRU(t *testing.T) {
+	s := lruTest{t: t}
+	s.init(0, WithSLruCap(1, 2))
+
+	en := createLRUEntries(s, 5)
+
+	remEn, evicted := s.slru.add(en[0])
+	// - | 0
+	if evicted {
+		t.Fatalf("unexpected entry removed: %v", remEn)
+	}
+	s.assertSLRULen(0, 1)
+	s.assertSLRUEntry(0, STAGE_ONE)
+
+	remEn, evicted = s.slru.add(en[1])
+	// - | 1 0
+	if evicted {
+		t.Fatalf("unexpected entry removed: %v", remEn)
+	}
+
+	s.assertSLRULen(0, 2)
+	s.assertSLRUEntry(1, STAGE_ONE)
+
+	s.slru.get(s.data[1])
+	// 1 | 0
+	s.assertSLRULen(1, 1)
+	s.assertSLRUEntry(1, STAGE_TWO)
+	s.assertSLRUEntry(0, STAGE_ONE)
+
+	s.slru.get(s.data[0])
+	// 0 1 | -
+	s.assertSLRULen(2, 0)
+	s.assertSLRUEntry(0, STAGE_TWO)
+	s.assertSLRUEntry(1, STAGE_TWO)
+
+	remEn, evicted = s.slru.add(en[2])
+	// 0 1 | 2
+	if evicted {
+		t.Fatalf("unexpected entry removed: %+v", remEn)
+	}
+	s.assertSLRULen(2, 1)
+	s.assertSLRUEntry(2, STAGE_ONE)
+	///**
+	remEn, evicted = s.slru.add(en[3])
+	// 0 1 | 3
+	s.assertSLRULen(2, 1)
+	s.assertEntry(&remEn, 2, "2", STAGE_ONE)
+	s.assertSLRUEntry(3, STAGE_ONE)
+
+	s.slru.get(s.data[3]) // 交换一下
+	// 3 0 | 1
+	s.assertSLRULen(2, 1)
+	s.assertSLRUEntry(3, STAGE_TWO)
+
+	remEn, evicted = s.slru.add(en[4])
+	// 3 0 | 4
+	s.assertSLRULen(2, 1)
+	s.assertEntry(&remEn, 1, "1", STAGE_ONE)
 }
