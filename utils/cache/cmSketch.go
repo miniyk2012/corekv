@@ -21,9 +21,17 @@ func newCmSketch(numCounters int64) *cmSketch {
 		panic("cmSketch: invalid numCounters")
 	}
 
+	// numCounters 一定是二次幂，也就一定是1后面有 n 个 0
 	numCounters = next2Power(numCounters)
+	// mask 一定是0111...111
 	sketch := &cmSketch{mask: uint64(numCounters - 1)}
 	source := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+	// 初始化4行
+	// 0000,0000|0000,0000|0000,0000
+	// 0000,0000|0000,0000|0000,0000
+	// 0000,0000|0000,0000|0000,0000
+	// 0000,0000|0000,0000|0000,0000
 
 	for i := 0; i < cmDepth; i++ {
 		sketch.seed[i] = source.Uint64()
@@ -35,6 +43,7 @@ func newCmSketch(numCounters int64) *cmSketch {
 
 // Increment 增加hash值(由key决定)的频率
 func (s *cmSketch) Increment(hashed uint64) {
+	// 对于每一行进行相同操作
 	for i := range s.rows {
 		// mask: uint64(numCounters - 1)
 		s.rows[i].increment((hashed ^ s.seed[i]) & s.mask) // hash & s.mask = hash % (numCounters - 1)
