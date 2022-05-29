@@ -54,7 +54,7 @@ func NewCache(size int) *Cache {
 		slru: newSLRU(data, slruO, slruSz-slruO),
 		door: newFilter(size, 0.01), //布隆过滤器设置误差率为0.01
 		c:    newCmSketch(int64(size)),
-		data: data, //共用同一个 slice 存储数据
+		data: data, //共用同一个 map 存储数据
 	}
 
 }
