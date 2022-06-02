@@ -35,6 +35,7 @@ type table struct {
 	fid uint64
 }
 
+// openTable when builder=nil, 加载sst. builder!=nil, flush sst后再加载sst
 func openTable(lm *levelManager, tableName string, builder *tableBuilder) *table {
 	ss := file.OpenSStable(&file.Options{
 		FileName: tableName,

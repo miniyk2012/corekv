@@ -162,12 +162,12 @@ func (lm *levelManager) flush(immutable *memTable) (err error) {
 	// 构建一个 builder
 	builder := newTableBuiler(lm.opt)
 	iter := immutable.sl.NewIterator(&utils.Options{})
-	for iter.Rewind(); iter.Valid(); iter.Next() {
+	for iter.Rewind(); iter.Valid(); iter.Next() {  // 把skiplist的元素一个个加入
 		entry := iter.Item().Entry()
 		builder.add(entry)
 	}
 	// 创建一个 table 对象
-	table := openTable(lm, sstName, builder)
+	table := openTable(lm, sstName, builder)  // builder=nil, 加载sst. builder!=nil, flush sst后再加载sst
 	// 更新manifest文件
 	lm.levels[0].add(table)
 	// LAB Manifest .... Write your code 添加变更到manifest状态机中

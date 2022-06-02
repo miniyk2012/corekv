@@ -177,7 +177,7 @@ func (tb *tableBuilder) allocate(need int) []byte {
 		copy(tmp, bb.data)
 		bb.data = tmp
 	}
-	bb.end += need
+	bb.end += need  // 这个特别重要!!!
 	return bb.data[bb.end-need : bb.end]
 }
 
@@ -224,7 +224,7 @@ func (bd *buildData) Copy(dst []byte) int {
 }
 
 func (tb *tableBuilder) done() buildData {
-	tb.finishBlock()
+	tb.finishBlock()  // 把add后来不及序列化的block.data也组织成datablock
 	if len(tb.blockList) == 0 {
 		return buildData{}
 	}
@@ -232,7 +232,7 @@ func (tb *tableBuilder) done() buildData {
 		blockList: tb.blockList,
 	}
 
-	var f utils.Filter
+	var f utils.Filter  // f恰好就是个byte数组, 太妙了
 	if tb.opt.BloomFalsePositive > 0 {
 		bits := utils.BloomBitsPerKey(len(tb.keyHashes), tb.opt.BloomFalsePositive)
 		f = utils.NewFilter(tb.keyHashes, bits)
@@ -256,7 +256,7 @@ func (tb *tableBuilder) buildIndex(bloom []byte) ([]byte, uint32) {
 	tableIndex.Offsets = tb.writeBlockOffsets(tableIndex)
 	var dataSize uint32
 	for i := range tb.blockList {
-		dataSize += uint32(tb.blockList[i].end)
+		dataSize += uint32(tb.blockList[i].end)  // 所有datablocks的长度
 	}
 	data, err := tableIndex.Marshal()
 	utils.Panic(err)
