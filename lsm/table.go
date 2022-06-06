@@ -315,7 +315,7 @@ func (it *tableIterator) seekToLast() {
 // 如果在 idx-1 的block中未找到key 那才可能在 idx 中
 // 如果都没有，则当前key不再此table
 func (it *tableIterator) Seek(key []byte) {
-	var ko pb.BlockOffset
+	var ko pb.BlockOffset  // ko.GetKey()是该datablock中最小的key
 	idx := sort.Search(len(it.t.ss.Indexs().GetOffsets()), func(idx int) bool {
 		utils.CondPanic(!it.t.offsets(&ko, idx), fmt.Errorf("tableutils.Seek idx < 0 || idx > len(index.GetOffsets()"))
 		return utils.CompareKeys(ko.GetKey(), key) > 0
@@ -342,6 +342,7 @@ func (it *tableIterator) seekHelper(blockIdx int, key []byte) {
 	it.it = it.bi.Item()
 }
 
+// offsets 将ko设置为第i个BlockOffset
 func (t *table) offsets(ko *pb.BlockOffset, i int) bool {
 	index := t.ss.Indexs()
 	if i < 0 || i > len(index.GetOffsets()) {
