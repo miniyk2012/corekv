@@ -107,7 +107,7 @@ func CompareKeys(key1, key2 []byte) int {
 	if cmp := bytes.Compare(key1[:len(key1)-8], key2[:len(key2)-8]); cmp != 0 {  // 为了区分a<timestamp>和aa<timestamp>, 因此必须这么比
 		return cmp
 	}
-	return bytes.Compare(key1[len(key1)-8:], key2[len(key2)-8:])  // key相同则比较时间戳
+	return bytes.Compare(key1[len(key1)-8:], key2[len(key2)-8:])  // key相同则比较时间戳, 时间戳大的排在前面
 }
 
 // VerifyChecksum crc32

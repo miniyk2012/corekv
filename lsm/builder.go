@@ -67,11 +67,13 @@ const headerSize = uint16(unsafe.Sizeof(header{}))
 
 // Decode decodes the header.
 func (h *header) decode(buf []byte) {
+	// 将h转成*[headerSize]byte, 即指向长度为headerSize的字节数组的指针. 再取[:]得到切片, 该切片与h共享内存, 再将buf的数据copy给切片.
 	copy(((*[headerSize]byte)(unsafe.Pointer(h))[:]), buf[:headerSize])
 }
 
 func (h header) encode() []byte {
 	var b [4]byte
+	// 将b的首地址转成header的指针类型, 再将h赋值给该指针所指内存, 就成功得将b [4]byte设置成了h
 	*(*header)(unsafe.Pointer(&b[0])) = h
 	return b[:]
 }
@@ -193,7 +195,7 @@ func (tb *tableBuilder) finishBlock() {
 	tb.append(utils.U32SliceToBytes(tb.curBlock.entryOffsets))
 	tb.append(utils.U32ToBytes(uint32(len(tb.curBlock.entryOffsets))))
 
-	checksum := tb.calculateChecksum(tb.curBlock.data[:tb.curBlock.end])
+	checksum := tb.calculateChecksum(tb.curBlock.data[:tb.curBlock.end])  // checksum计算的是kv_data+offsets+offset_len的checksum
 
 	// Append the block checksum and its length.
 	tb.append(checksum)
@@ -347,7 +349,7 @@ func (b block) verifyCheckSum() error {
 
 type blockIterator struct {
 	data         []byte
-	idx          int
+	idx          int   // 第几个kv对
 	err          error
 	baseKey      []byte
 	key          []byte
@@ -386,13 +388,13 @@ func (itr *blockIterator) seekToLast() {
 func (itr *blockIterator) seek(key []byte) {
 	itr.err = nil
 	startIndex := 0 // This tells from which index we should start binary search.
-
+	// 找到第一个>=key的entryId
 	foundEntryIdx := sort.Search(len(itr.entryOffsets), func(idx int) bool {
 		// If idx is less than start index then just return false.
 		if idx < startIndex {
 			return false
 		}
-		itr.setIdx(idx)
+		itr.setIdx(idx)  // 主要是为了设置key和val
 		return utils.CompareKeys(itr.key, key) >= 0
 	})
 	itr.setIdx(foundEntryIdx)
@@ -438,7 +440,7 @@ func (itr *blockIterator) setIdx(i int) {
 	entryData := itr.data[startOffset:endOffset]
 	var h header
 	h.decode(entryData)
-	if h.overlap > itr.prevOverlap {
+	if h.overlap > itr.prevOverlap {  // 我觉得直接itr.key=itr.baseKey[:h.overlap]即可
 		itr.key = append(itr.key[:itr.prevOverlap], itr.baseKey[itr.prevOverlap:h.overlap]...)
 	}
 

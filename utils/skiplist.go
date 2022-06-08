@@ -414,7 +414,7 @@ func (s *Skiplist) Add(e *Entry) {
 			pnode := s.arena.getNode(prev[i])
 			if pnode.casNextOffset(i, next[i], s.arena.getNodeOffset(x)) {  // 前驱更新要并发
 				// Managed to insert x between prev[i] and next[i]. Go to the next level.
-				break  // 前驱后面CAS连上了x,该层插入成功, 跳出循环进入下一层
+				break  // 前驱后面CAS连上了x, 该层插入成功, 跳出循环进入下一层
 			}
 			// CAS failed. We need to recompute prev and next.  这是CAS失败的弥补逻辑, 重新找一下key的前驱和后继
 			// It is unlikely to be helpful to try to use a different level as we redo the search,

@@ -43,8 +43,8 @@ func OpenMmapFileUsing(fd *os.File, sz int, writable bool) (*MmapFile, error) {
 	}
 
 	var rerr error
-	fileSize := fi.Size()
-	if sz > 0 && fileSize == 0 {
+	fileSize := fi.Size()  // 如果fileSize不为0, 说明是加载老的sst文件, 那就只需要映射该sst文件大小的内存
+	if sz > 0 && fileSize == 0 {  // flush新的sst时, fileSize=0, 走这个逻辑, 分配需要序列化的sst的容量.
 		// If file is empty, truncate it to sz.
 		if err := fd.Truncate(int64(sz)); err != nil {
 			return nil, errors.Wrapf(err, "error while truncation")

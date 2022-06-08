@@ -97,11 +97,12 @@ func (t *table) Serach(key []byte, maxVs *uint64) (entry *utils.Entry, err error
 	iter := t.NewIterator(&utils.Options{})
 	defer iter.Close()
 
+	// Seek 找到第一个>=key的entry, 存储于iter.Item().Entry()中
 	iter.Seek(key)
 	if !iter.Valid() {
 		return nil, utils.ErrKeyNotFound
 	}
-
+	// 先比较去掉时间戳的key是否相等, 再看该key的时间戳是否大于传入的maxVs
 	if utils.SameKey(key, iter.Item().Entry().Key) {
 		if version := utils.ParseTs(iter.Item().Entry().Key); *maxVs < version {
 			*maxVs = version
@@ -136,7 +137,7 @@ func (t *table) block(idx int) (*block, error) {
 		return nil, errors.New("block out of index")
 	}
 	var b *block
-	key := t.blockCacheKey(idx)
+	key := t.blockCacheKey(idx)  // 缓存是用idx和fid作为key的
 	blk, ok := t.lm.cache.blocks.Get(key)
 	if ok && blk != nil {
 		b, _ = blk.(*block)
@@ -146,7 +147,7 @@ func (t *table) block(idx int) (*block, error) {
 	var ko pb.BlockOffset
 	utils.CondPanic(!t.offsets(&ko, idx), fmt.Errorf("block t.offset id=%d", idx))
 	b = &block{
-		offset: int(ko.GetOffset()),
+		offset: int(ko.GetOffset()),  // ko是pb数据, ko.GetOffset()是该block在内存映射文件中的起始地址
 	}
 
 	var err error
@@ -167,7 +168,7 @@ func (t *table) block(idx int) (*block, error) {
 	readPos -= b.chkLen
 	b.checksum = b.data[readPos : readPos+b.chkLen]
 
-	b.data = b.data[:readPos]
+	b.data = b.data[:readPos]  // 这里data存储的是kv_data+offsets+offset_len
 
 	if err = b.verifyCheckSum(); err != nil {
 		return nil, err
@@ -308,7 +309,7 @@ func (it *tableIterator) seekToLast() {
 	it.err = it.bi.Error()
 }
 
-// Seek
+// Seek 找到第一个>=key的entry, 存储于tableIterator.it中
 // 二分法搜索 offsets
 // 如果idx == 0 说明key只能在第一个block中 block[0].MinKey <= key
 // 否则 block[0].MinKey > key

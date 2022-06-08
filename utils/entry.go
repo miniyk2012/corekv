@@ -65,7 +65,7 @@ func sizeVarint(x uint64) (n int) {
 	return n
 }
 
-//Entry _ 最外层写入的结构体
+//Entry 最外层写入的结构体
 type Entry struct {
 	Key       []byte
 	Value     []byte
