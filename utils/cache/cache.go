@@ -97,7 +97,7 @@ func (c *Cache) set(key, value interface{}) bool {
 
 	// 这里进行 PK，必须在 bloomfilter 中出现过一次，才允许 PK
 	// 在 bf 中出现，说明访问频率 >= 2
-	if !c.door.Allow(uint32(keyHash)) {
+	if !c.door.Allow(uint32(eitem.key)) {
 		return true
 	}
 
@@ -133,6 +133,7 @@ func (c *Cache) get(key interface{}) (interface{}, bool) {
 
 	val, ok := c.data[keyHash]
 	if !ok {
+		c.door.Allow(uint32(keyHash))
 		c.c.Increment(keyHash)
 		return nil, false
 	}
@@ -140,10 +141,11 @@ func (c *Cache) get(key interface{}) (interface{}, bool) {
 	item := val.Value.(*storeItem)
 
 	if item.conflict != conflictHash {
+		c.door.Allow(uint32(keyHash))
 		c.c.Increment(keyHash)
 		return nil, false
 	}
-
+	c.door.Allow(uint32(keyHash))
 	c.c.Increment(item.key)
 
 	v := item.value
@@ -229,4 +231,10 @@ func MemHashString(str string) uint64 {
 func MemHash(data []byte) uint64 {
 	ss := (*stringStruct)(unsafe.Pointer(&data))
 	return uint64(memhash(ss.str, 0, uintptr(ss.len)))
+}
+
+func (c *Cache) String() string {
+	var s string
+	s += c.lru.String() + " | " + c.slru.String()
+	return s
 }
