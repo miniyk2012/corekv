@@ -348,12 +348,12 @@ func (b block) verifyCheckSum() error {
 }
 
 type blockIterator struct {
-	data         []byte
-	idx          int   // 第几个kv对
+	data         []byte  // 存储了当前block的kv_data
+	idx          int   // 迭代到第几个kv对
 	err          error
 	baseKey      []byte
-	key          []byte
-	val          []byte
+	key          []byte  // 当前idx指向的entry的key
+	val          []byte  // 当前idx指向的entry的val
 	entryOffsets []uint32
 	block        *block
 
@@ -400,6 +400,7 @@ func (itr *blockIterator) seek(key []byte) {
 	itr.setIdx(foundEntryIdx)
 }
 
+// setIdx 解析出该block的第i个kv对设置到blockIterator的Item()上
 func (itr *blockIterator) setIdx(i int) {
 	itr.idx = i
 	if i >= len(itr.entryOffsets) || i < 0 {

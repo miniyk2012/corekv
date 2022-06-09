@@ -60,5 +60,5 @@ message TableIndex{
 message BlockOffset{
         bytes key = 1;
         uint32 offset = 2;
-        uint32 len = 3;
+        uint32 len = 3;  // 对应的datablock的长度
 }

@@ -168,7 +168,7 @@ func (t *table) block(idx int) (*block, error) {
 	readPos -= b.chkLen
 	b.checksum = b.data[readPos : readPos+b.chkLen]
 
-	b.data = b.data[:readPos]  // 这里data存储的是kv_data+offsets+offset_len
+	b.data = b.data[:readPos]  // 这样一来data存储的是kv_data+offsets+offset_len
 
 	if err = b.verifyCheckSum(); err != nil {
 		return nil, err
