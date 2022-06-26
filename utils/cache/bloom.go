@@ -12,35 +12,40 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package utils
+package cache
 
 import "math"
 
 // Filter is an encoded set of []byte keys.
 type Filter []byte
 
+type BloomFilter struct {
+	bitmap Filter
+	k      uint8
+}
+
 // MayContainKey _
-func (f Filter) MayContainKey(k []byte) bool {
+func (f *BloomFilter) MayContainKey(k []byte) bool {
 	return f.MayContain(Hash(k))
 }
 
 // MayContain returns whether the filter may contain given key. False positives
 // are possible, where it returns true for keys not in the original set.
-func (f Filter) MayContain(h uint32) bool {
-	if len(f) < 2 {
+func (f *BloomFilter) MayContain(h uint32) bool {
+	if f.Len() < 2 {
 		return false
 	}
-	k := f[len(f)-1]
+	k := f.k
 	if k > 30 {
 		// This is reserved for potentially new encodings for short Bloom filters.
 		// Consider it a match.
 		return true
 	}
-	nBits := uint32(8 * (len(f) - 1))
+	nBits := uint32(8 * (f.Len() - 1))
 	delta := h>>17 | h<<15
 	for j := uint8(0); j < k; j++ {
 		bitPos := h % nBits
-		if f[bitPos/8]&(1<<(bitPos%8)) == 0 {
+		if f.bitmap[bitPos/8]&(1<<(bitPos%8)) == 0 {
 			return false
 		}
 		h += delta
@@ -48,24 +53,82 @@ func (f Filter) MayContain(h uint32) bool {
 	return true
 }
 
+func (f *BloomFilter) Len() int32 {
+	return int32(len(f.bitmap))
+}
+
+func (f *BloomFilter) InsertKey(k []byte) bool {
+	return f.Insert(Hash(k))
+}
+
+func (f *BloomFilter) Insert(h uint32) bool {
+	k := f.k
+	if k > 30 {
+		// This is reserved for potentially new encodings for short Bloom filters.
+		// Consider it a match.
+		return true
+	}
+	nBits := uint32(8 * (f.Len() - 1))
+	delta := h>>17 | h<<15
+	for j := uint8(0); j < k; j++ {
+		bitPos := h % uint32(nBits)
+		f.bitmap[bitPos/8] |= 1 << (bitPos % 8)
+		h += delta
+	}
+	return true
+}
+
+func (f *BloomFilter) AllowKey(k []byte) bool {
+	if f == nil {
+		return true
+	}
+	already := f.MayContainKey(k)
+	if !already {
+		f.InsertKey(k)
+	}
+	return already
+}
+
+func (f *BloomFilter) Allow(h uint32) bool {
+	if f == nil {
+		return true
+	}
+	already := f.MayContain(h)
+	if !already {
+		f.Insert(h)
+	}
+	return already
+}
+
+func (f *BloomFilter) reset() {
+	if f == nil {
+		return
+	}
+	for i := range f.bitmap {
+		f.bitmap[i] = 0
+	}
+}
+
 // NewFilter returns a new Bloom filter that encodes a set of []byte keys with
 // the given number of bits per key, approximately.
 //
 // A good bitsPerKey value is 10, which yields a filter with ~ 1% false
 // positive rate.
-func NewFilter(keys []uint32, bitsPerKey int) Filter {
-	return Filter(appendFilter(keys, bitsPerKey))
+func newFilter(numEntries int, falsePositive float64) *BloomFilter {
+	bitsPerKey := bloomBitsPerKey(numEntries, falsePositive)
+	return initFilter(numEntries, bitsPerKey)
 }
 
 // BloomBitsPerKey returns the bits per key required by bloomfilter based on
 // the false positive rate.
-func BloomBitsPerKey(numEntries int, fp float64) int {
+func bloomBitsPerKey(numEntries int, fp float64) int {
 	size := -1 * float64(numEntries) * math.Log(fp) / math.Pow(float64(0.69314718056), 2)
 	locs := math.Ceil(size / float64(numEntries))
 	return int(locs)
 }
 
-func appendFilter(keys []uint32, bitsPerKey int) []byte {
+func initFilter(numEntries int, bitsPerKey int) *BloomFilter {
+	bf := &BloomFilter{}
 	if bitsPerKey < 0 {
 		bitsPerKey = 0
 	}
@@ -77,8 +140,9 @@ func appendFilter(keys []uint32, bitsPerKey int) []byte {
 	if k > 30 {
 		k = 30
 	}
+	bf.k = uint8(k)
 
-	nBits := len(keys) * int(bitsPerKey)
+	nBits := numEntries * int(bitsPerKey)
 	// For small len(keys), we can see a very high false positive rate. Fix it
 	// by enforcing a minimum bloom filter length.
 	if nBits < 64 {
@@ -88,19 +152,11 @@ func appendFilter(keys []uint32, bitsPerKey int) []byte {
 	nBits = nBytes * 8
 	filter := make([]byte, nBytes+1)
 
-	for _, h := range keys {
-		delta := h>>17 | h<<15
-		for j := uint32(0); j < k; j++ {
-			bitPos := h % uint32(nBits)
-			filter[bitPos/8] |= 1 << (bitPos % 8)
-			h += delta
-		}
-	}
-
 	//record the K value of this Bloom Filter
 	filter[nBytes] = uint8(k)
 
-	return filter
+	bf.bitmap = filter
+	return bf
 }
 
 // Hash implements a hashing algorithm similar to the Murmur hash.
