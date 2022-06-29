@@ -195,7 +195,7 @@ func (tb *tableBuilder) finishBlock() {
 	tb.append(utils.U32SliceToBytes(tb.curBlock.entryOffsets))
 	tb.append(utils.U32ToBytes(uint32(len(tb.curBlock.entryOffsets))))
 
-	checksum := tb.calculateChecksum(tb.curBlock.data[:tb.curBlock.end])  // checksum计算的是kv_data+offsets+offset_len的checksum
+	checksum := tb.calculateChecksum(tb.curBlock.data[:tb.curBlock.end]) // checksum计算的是kv_data+offsets+offset_len的checksum
 
 	// Append the block checksum and its length.
 	tb.append(checksum)
@@ -258,14 +258,17 @@ func (tb *tableBuilder) flush(lm *levelManager, tableName string) (t *table, err
 	buf := make([]byte, bd.size)
 	written := bd.Copy(buf)
 	utils.CondPanic(written != len(buf), fmt.Errorf("tableBuilder.flush written != len(buf)"))
+	// 在内存映射文件的数组里分配一个sst所需要的空间
 	dst, err := t.ss.Bytes(0, bd.size)
 	if err != nil {
 		return nil, err
 	}
+	// sst落盘
 	copy(dst, buf)
 	return t, nil
 }
 
+// Copy 将builder里的block, table_index, checksum等都复制到dst中
 func (bd *buildData) Copy(dst []byte) int {
 	var written int
 	for _, bl := range bd.blockList {
@@ -348,12 +351,12 @@ func (b block) verifyCheckSum() error {
 }
 
 type blockIterator struct {
-	data         []byte  // 存储了当前block的kv_data
-	idx          int   // 迭代到第几个kv对
+	data         []byte // 存储了当前block的kv_data
+	idx          int    // 迭代到第几个kv对
 	err          error
 	baseKey      []byte
-	key          []byte  // 当前idx指向的entry的key
-	val          []byte  // 当前idx指向的entry的val
+	key          []byte // 当前idx指向的entry的key
+	val          []byte // 当前idx指向的entry的val
 	entryOffsets []uint32
 	block        *block
 
@@ -394,7 +397,7 @@ func (itr *blockIterator) seek(key []byte) {
 		if idx < startIndex {
 			return false
 		}
-		itr.setIdx(idx)  // 主要是为了设置key和val
+		itr.setIdx(idx) // 主要是为了设置key和val
 		return utils.CompareKeys(itr.key, key) >= 0
 	})
 	itr.setIdx(foundEntryIdx)
@@ -441,7 +444,7 @@ func (itr *blockIterator) setIdx(i int) {
 	entryData := itr.data[startOffset:endOffset]
 	var h header
 	h.decode(entryData)
-	if h.overlap > itr.prevOverlap {  // 我觉得直接itr.key=itr.baseKey[:h.overlap]即可
+	if h.overlap > itr.prevOverlap { // 我觉得直接itr.key=itr.baseKey[:h.overlap]即可
 		itr.key = append(itr.key[:itr.prevOverlap], itr.baseKey[itr.prevOverlap:h.overlap]...)
 	}
 
