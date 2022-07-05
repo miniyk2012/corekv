@@ -79,7 +79,7 @@ var (
 	ErrRejected = errors.New("Value log GC request rejected")
 )
 
-// Panic 如果err 不为nil 则panicc
+// Panic 如果err 不为nil 则panic
 func Panic(err error) {
 	if err != nil {
 		panic(err)
