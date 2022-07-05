@@ -137,7 +137,7 @@ func (t *table) block(idx int) (*block, error) {
 		return nil, errors.New("block out of index")
 	}
 	var b *block
-	key := t.blockCacheKey(idx)  // 缓存是用idx和fid作为key的
+	key := t.blockCacheKey(idx) // 缓存是用idx和fid作为key的
 	blk, ok := t.lm.cache.blocks.Get(key)
 	if ok && blk != nil {
 		b, _ = blk.(*block)
@@ -147,7 +147,7 @@ func (t *table) block(idx int) (*block, error) {
 	var ko pb.BlockOffset
 	utils.CondPanic(!t.offsets(&ko, idx), fmt.Errorf("block t.offset id=%d", idx))
 	b = &block{
-		offset: int(ko.GetOffset()),  // ko是pb数据, ko.GetOffset()是该block在内存映射文件中的起始地址
+		offset: int(ko.GetOffset()), // ko是pb数据, ko.GetOffset()是该block在内存映射文件中的起始地址
 	}
 
 	var err error
@@ -168,7 +168,7 @@ func (t *table) block(idx int) (*block, error) {
 	readPos -= b.chkLen
 	b.checksum = b.data[readPos : readPos+b.chkLen]
 
-	b.data = b.data[:readPos]  // 这样一来data存储的是kv_data+offsets+offset_len
+	b.data = b.data[:readPos] // 这样一来data存储的是kv_data+offsets+offset_len
 
 	if err = b.verifyCheckSum(); err != nil {
 		return nil, err
@@ -314,16 +314,14 @@ func (it *tableIterator) seekToLast() {
 // 如果idx == 0 说明key只能在第一个block中 block[0].MinKey <= key
 // 否则 block[0].MinKey > key
 // 如果在 idx-1 的block中未找到key 那才可能在 idx 中
-// 如果都没有，则当前key不再此table
+// 如果都没有，则当前key不在此table
 func (it *tableIterator) Seek(key []byte) {
-	var ko pb.BlockOffset  // ko.GetKey()是该datablock中最小的key
+	var ko pb.BlockOffset // ko.GetKey()是该datablock中最小的key
 	idx := sort.Search(len(it.t.ss.Indexs().GetOffsets()), func(idx int) bool {
 		utils.CondPanic(!it.t.offsets(&ko, idx), fmt.Errorf("tableutils.Seek idx < 0 || idx > len(index.GetOffsets()"))
-		if idx == len(it.t.ss.Indexs().GetOffsets()) {
-			return true
-		}
-		return utils.CompareKeys(ko.GetKey(), key) > 0
+		return utils.CompareKeys(ko.GetKey(), key) > 0 // key相同则比较时间戳, 时间戳大的排在前面
 	})
+	// idx是首个baseKey大于key的datablock的下标, 当idx=0时说明key比第一个block的baseKey还小, 应该就不存在了
 	if idx == 0 {
 		it.seekHelper(0, key)
 		return
