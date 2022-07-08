@@ -193,6 +193,7 @@ func (t *table) read(off, sz int) ([]byte, error) {
 }
 
 // blockCacheKey is used to store blocks in the block cache.
+// 用idx和fid作为key
 func (t *table) blockCacheKey(idx int) []byte {
 	utils.CondPanic(t.fid >= math.MaxUint32, fmt.Errorf("t.fid >= math.MaxUint32"))
 	utils.CondPanic(uint32(idx) >= math.MaxUint32, fmt.Errorf("uint32(idx) >=  math.MaxUint32"))
