@@ -77,7 +77,7 @@ func OpenManifestFile(opt *Options) (*ManifestFile, error) {
 		// 此时m是空的, 这时候覆写有啥用呢: 其实这里只是一个代码复用, 这种场景是第一次使用数据库, 啥都没有.
 		// 那要新建一个manifest文件, 并初始化fp句柄指向文件末尾, 供后续追加变更用.
 		// 因为无论是空的覆写还是有状态覆写, 都是从头新建一个manifest文件, 因此helpRewrite函数可以复用.
-		fp, netCreations, err := helpRewrite(opt.Dir, m)
+		fp, netCreations, err := helpRewrite(opt.Dir, m) // 这里netCreations==0, 不过err为nil, 因此下面一行不会panic
 		utils.CondPanic(netCreations == 0, errors.Wrap(err, utils.ErrReWriteFailure.Error()))
 		if err != nil {
 			return mf, err
