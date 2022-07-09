@@ -63,7 +63,7 @@ type TableMeta struct {
 	Checksum []byte
 }
 
-// OpenManifestFile 打开manifest文件
+// OpenManifestFile 打开manifest文件, 变成ManifestFile内存数据结构, 这样就得到了sst文件名和所在层数
 func OpenManifestFile(opt *Options) (*ManifestFile, error) {
 	path := filepath.Join(opt.Dir, utils.ManifestFilename)
 	mf := &ManifestFile{lock: sync.Mutex{}, opt: opt}
@@ -74,6 +74,9 @@ func OpenManifestFile(opt *Options) (*ManifestFile, error) {
 			return mf, err
 		}
 		m := createManifest()
+		// 此时m是空的, 这时候覆写有啥用呢: 其实这里只是一个代码复用, 这种场景是第一次使用数据库, 啥都没有.
+		// 那要新建一个manifest文件, 并初始化fp句柄指向文件末尾, 供后续追加变更用.
+		// 因为无论是空的覆写还是有状态覆写, 都是从头新建一个manifest文件, 因此helpRewrite函数可以复用.
 		fp, netCreations, err := helpRewrite(opt.Dir, m)
 		utils.CondPanic(netCreations == 0, errors.Wrap(err, utils.ErrReWriteFailure.Error()))
 		if err != nil {
@@ -85,7 +88,7 @@ func OpenManifestFile(opt *Options) (*ManifestFile, error) {
 		return mf, nil
 	}
 
-	// 如果打开 则对manifest文件重放
+	// 如果打开 则对manifest文件重放. 这里目前用的普通IO读, 我觉得可以用mmap读回快一些
 	manifest, truncOffset, err := ReplayManifestFile(f)
 	if err != nil {
 		_ = f.Close()
@@ -105,7 +108,7 @@ func OpenManifestFile(opt *Options) (*ManifestFile, error) {
 	return mf, nil
 }
 
-// ReplayManifestFile 对已经存在的manifest文件重新应用所有状态变更
+// ReplayManifestFile 对已经存在的manifest文件重新应用所有状态变更, 最后的多层sst排布到Manifest内存数据结构里面
 func ReplayManifestFile(fp *os.File) (ret *Manifest, truncOffset int64, err error) {
 	r := &bufReader{reader: bufio.NewReader(fp)}
 	var magicBuf [8]byte
@@ -123,6 +126,7 @@ func ReplayManifestFile(fp *os.File) (ret *Manifest, truncOffset int64, err erro
 
 	build := createManifest()
 	var offset int64
+	// manifest文件里可能有多次ManifestChangeSet的追加, 循环拿数据.
 	for {
 		offset = r.count
 		var lenCrcBuf [8]byte
@@ -133,8 +137,8 @@ func ReplayManifestFile(fp *os.File) (ret *Manifest, truncOffset int64, err erro
 			}
 			return &Manifest{}, 0, err
 		}
-		length := binary.BigEndian.Uint32(lenCrcBuf[0:4])
-		var buf = make([]byte, length)
+		length := binary.BigEndian.Uint32(lenCrcBuf[0:4]) // ManifestChangeSet的pb长度
+		var buf = make([]byte, length)                    // 读取一个ManifestChangeSet的pb数据
 		if _, err := io.ReadFull(r, buf); err != nil {
 			if err == io.EOF || err == io.ErrUnexpectedEOF {
 				break
@@ -160,6 +164,7 @@ func ReplayManifestFile(fp *os.File) (ret *Manifest, truncOffset int64, err erro
 
 // This is not a "recoverable" error -- opening the KV store fails because the MANIFEST file is
 // just plain broken.
+// 更新Manifest的状态为当前sst的分布
 func applyChangeSet(build *Manifest, changeSet *pb.ManifestChangeSet) error {
 	for _, change := range changeSet.Changes {
 		if err := applyManifestChange(build, change); err != nil {
@@ -219,6 +224,7 @@ func (r *bufReader) Read(p []byte) (n int, err error) {
 
 // asChanges returns a sequence of changes that could be used to recreate the Manifest in its
 // present state.
+// 把Manifest的sst分布状态构造成一个changes序列
 func (m *Manifest) asChanges() []*pb.ManifestChange {
 	changes := make([]*pb.ManifestChange, 0, len(m.Tables))
 	for id, tm := range m.Tables {
@@ -251,6 +257,7 @@ func (mf *ManifestFile) rewrite() error {
 	return nil
 }
 
+// _ 覆写逻辑, 大致就是说当manifest内存里的增/删sst操作达到阈值时, 写入达到manifest文件中
 func helpRewrite(dir string, m *Manifest) (*os.File, int, error) {
 	rewritePath := filepath.Join(dir, utils.ManifestRewriteFilename)
 	// We explicitly sync.
@@ -298,6 +305,7 @@ func helpRewrite(dir string, m *Manifest) (*os.File, int, error) {
 	if err != nil {
 		return nil, 0, err
 	}
+	// fp指向覆写后的末尾, 以便后续change的追加.
 	if _, err := fp.Seek(0, io.SeekEnd); err != nil {
 		fp.Close()
 		return nil, 0, err
@@ -342,6 +350,7 @@ func (mf *ManifestFile) addChanges(changesParam []*pb.ManifestChange) error {
 			return err
 		}
 	} else {
+		// 这里凡是有sst的变更操作, 都会写入manifest文件, 类似wal
 		var lenCrcBuf [8]byte
 		binary.BigEndian.PutUint32(lenCrcBuf[0:4], uint32(len(buf)))
 		binary.BigEndian.PutUint32(lenCrcBuf[4:8], crc32.Checksum(buf, utils.CastagnoliCrcTable))
@@ -354,7 +363,7 @@ func (mf *ManifestFile) addChanges(changesParam []*pb.ManifestChange) error {
 	return err
 }
 
-// AddTableMeta 存储level表到manifest的level中
+// AddTableMeta 存储level表到manifest的level中, 如果达到阈值会覆写manifest文件
 func (mf *ManifestFile) AddTableMeta(levelNum int, t *TableMeta) (err error) {
 	mf.addChanges([]*pb.ManifestChange{
 		newCreateChange(t.ID, levelNum, t.Checksum),

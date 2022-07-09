@@ -83,6 +83,8 @@ func (lm *levelManager) loadManifest() (err error) {
 	lm.manifestFile, err = file.OpenManifestFile(&file.Options{Dir: lm.opt.WorkDir})
 	return err
 }
+
+// 根据manifest文件中sst的层级分布, 加载所有sst的索引到内存
 func (lm *levelManager) build() error {
 	lm.levels = make([]*levelHandler, 0, lm.opt.MaxLevelNum)
 	for i := 0; i < lm.opt.MaxLevelNum; i++ {
@@ -107,7 +109,7 @@ func (lm *levelManager) build() error {
 		if fID > maxFID {
 			maxFID = fID
 		}
-		t := openTable(lm, fileName, nil)
+		t := openTable(lm, fileName, nil) // 这一步挺耗资源的
 		lm.levels[tableInfo.Level].add(t)
 		lm.levels[tableInfo.Level].addSize(t) // 记录一个level的文件总大小
 	}
