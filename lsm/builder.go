@@ -247,7 +247,7 @@ func (tb *tableBuilder) keyDiff(newKey []byte) []byte {
 
 // TODO: 这里存在多次的用户空间拷贝过程，需要优化
 func (tb *tableBuilder) flush(lm *levelManager, tableName string) (t *table, err error) {
-	bd := tb.done()
+	bd := tb.done() // todo 这里和外层的done有重复, 可以优化
 	t = &table{lm: lm, fid: utils.FID(tableName)}
 	// 如果没有builder 则创打开一个已经存在的sst文件
 	t.ss = file.OpenSStable(&file.Options{
@@ -282,6 +282,7 @@ func (bd *buildData) Copy(dst []byte) int {
 	return written
 }
 
+// done 把最后一个black序列化, 把table_index序列化... 完成整个sst的序列化
 func (tb *tableBuilder) done() buildData {
 	tb.finishBlock()
 	if len(tb.blockList) == 0 {
