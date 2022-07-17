@@ -1,3 +1,4 @@
+//go:build linux
 // +build linux
 
 // Copyright 2021 hardcore-os Project Authors
@@ -52,7 +53,7 @@ func OpenSStable(opt *Options) *SSTable {
 
 // Init 初始化
 func (ss *SSTable) Init() error {
-	var ko *pb.BlockOffset
+	var ko *pb.BlockOffset // 存储首个BlockOffset
 	var err error
 	if ko, err = ss.initTable(); err != nil {
 		return err
@@ -74,6 +75,8 @@ func (ss *SSTable) Init() error {
 func (ss *SSTable) SetMaxKey(maxKey []byte) {
 	ss.maxKey = maxKey
 }
+
+// initTable 解析mmap内的tableIndex, 设置到SSTable.idxTables上, 并返回第一个BlockOffset
 func (ss *SSTable) initTable() (bo *pb.BlockOffset, err error) {
 	readPos := len(ss.f.Data)
 
