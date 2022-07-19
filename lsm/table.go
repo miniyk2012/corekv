@@ -310,7 +310,7 @@ func (it *tableIterator) seekToLast() {
 	it.err = it.bi.Error()
 }
 
-// Seek 找到第一个>=key的entry, 存储于tableIterator.it中
+// Seek 找到第一个>=key的entry(这里是整体比较, 若键部分相同, 则比较时间戳), 存储于tableIterator.it中
 // 二分法搜索 offsets
 // 如果idx == 0 说明key只能在第一个block中 block[0].MinKey <= key
 // 否则 block[0].MinKey > key
