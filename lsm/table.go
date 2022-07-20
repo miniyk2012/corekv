@@ -147,7 +147,7 @@ func (t *table) block(idx int) (*block, error) {
 	var ko pb.BlockOffset
 	utils.CondPanic(!t.offsets(&ko, idx), fmt.Errorf("block t.offset id=%d", idx))
 	b = &block{
-		offset: int(ko.GetOffset()), // ko是pb数据, ko.GetOffset()是该block在内存映射文件中的起始地址
+		offset: int(ko.GetOffset()), // ko是pb结构, ko.GetOffset()是该block在内存映射文件中的起始地址
 	}
 
 	var err error
@@ -168,7 +168,7 @@ func (t *table) block(idx int) (*block, error) {
 	readPos -= b.chkLen
 	b.checksum = b.data[readPos : readPos+b.chkLen]
 
-	b.data = b.data[:readPos] // 这样一来data存储的是kv_data+offsets+offset_len
+	b.data = b.data[:readPos] // 这样一来data存储的是kv_data+entry_offsets+entry_offsets_len
 
 	if err = b.verifyCheckSum(); err != nil {
 		return nil, err
@@ -323,6 +323,7 @@ func (it *tableIterator) Seek(key []byte) {
 		return utils.CompareKeys(ko.GetKey(), key) > 0 // key相同则比较时间戳, 时间戳大的排在前面
 	})
 	// idx是首个baseKey大于key的datablock的下标, 当idx=0时说明key比第一个block的baseKey还小, 应该就不存在了
+	// 若key比所有block的baseKey都大, 则返回len(TableIndex.Offsets)
 	if idx == 0 {
 		it.seekHelper(0, key)
 		return
@@ -348,11 +349,8 @@ func (it *tableIterator) seekHelper(blockIdx int, key []byte) {
 // offsets 将ko设置为第i个BlockOffset
 func (t *table) offsets(ko *pb.BlockOffset, i int) bool {
 	index := t.ss.Indexs()
-	if i < 0 || i > len(index.GetOffsets()) {
+	if i < 0 || i >= len(index.GetOffsets()) {
 		return false
-	}
-	if i == len(index.GetOffsets()) {
-		return true
 	}
 	*ko = *index.GetOffsets()[i]
 	return true

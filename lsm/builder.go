@@ -47,15 +47,15 @@ type buildData struct {
 	size      int
 }
 type block struct {
-	offset            int //当前block的offset 首地址
-	checksum          []byte
-	entriesIndexStart int
+	offset            int    // 当前block的offset 首地址, 是从BlockOffset.offset获得的
+	checksum          []byte // 当前datablock的checksum, 由kv_data,entry_offsets,entry_offsets_num部分算出
+	entriesIndexStart int    // 当前block的entry_offsets的起始地址
 	chkLen            int
-	data              []byte
-	baseKey           []byte
-	entryOffsets      []uint32
-	end               int
-	estimateSz        int64
+	data              []byte   // 当前block的kv_data,entryoffsets,offset_len,checksum,checksum_len的[]byte数据
+	baseKey           []byte   // block的首个key
+	entryOffsets      []uint32 // 当前block中每个kv的起始偏移量(在block.data),第一个值是0
+	end               int      // 记录当前block的末端(在block.data中的)的偏移量, 用于继续往后新增Entry
+	estimateSz        int64    // 假设add一个Entry, block的预估值, 用于判断是否需要新开一个block
 }
 
 type header struct {
